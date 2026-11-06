@@ -80,6 +80,22 @@ def test_gitleaks_wrapper_parses_report(monkeypatch, tmp_path):
     assert result.stats["tools"]["gitleaks"] == "8.18.0"
 
 
+def test_regex_rules_still_run_when_gitleaks_misses_a_key(monkeypatch, tmp_path):
+    def fake_run(argv, timeout=0):
+        if argv[1] == "detect":
+            with open(argv[argv.index("--report-path") + 1], "w", encoding="utf-8") as fh:
+                fh.write("[]")
+        return subprocess.CompletedProcess(argv, 0, stdout="8.24.0", stderr="")
+
+    monkeypatch.setattr(code_scan, "run_tool", fake_run)
+    monkeypatch.setattr(code_scan.shutil, "which", lambda b: "/usr/bin/gitleaks")
+    monkeypatch.setattr(code_scan, "bandit_version", lambda: None)
+    key = "sk-proj-" + "W" * 6 + "abcdefghijklmnopqrstu5555"
+    result = run_code_scan(tmp_path, [SourceFile("config.py", f'KEY = "{key}"')])
+    assert result.stats["tools"]["gitleaks"] == "8.24.0"
+    assert [f.check_id for f in result.findings] == ["regex-secret/openai-key"]
+
+
 def test_without_gitleaks_uses_regex_fallback(monkeypatch, tmp_path):
     monkeypatch.setattr(code_scan.shutil, "which", lambda b: None)
     monkeypatch.setattr(code_scan, "bandit_version", lambda: None)

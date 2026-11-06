@@ -269,8 +269,13 @@ def run_code_scan(root: Path, files: list[SourceFile], *, gitleaks_bin: str = "g
     result.findings += findings
     result.checks += checks
 
+    # The regex rules always run: gitleaks' generic rules miss some key formats (e.g. the demo's fake sk-proj key),
+    # and both share the merge key secret:<file>, so overlapping hits become one risk with two detectors.
+    f, c = scan_secrets_regex(files)
+    result.findings += f
+    result.checks += c
     binary = shutil.which(gitleaks_bin)
-    tools: dict[str, str] = {}
+    tools: dict[str, str] = {"gitleaks": "not found (regex fallback)"}
     if binary:
         try:
             f, c, version = scan_gitleaks(root, binary)
@@ -279,12 +284,6 @@ def run_code_scan(root: Path, files: list[SourceFile], *, gitleaks_bin: str = "g
             tools["gitleaks"] = version or "installed"
         except (OSError, RuntimeError, subprocess.SubprocessError, json.JSONDecodeError) as exc:
             result.notes.append(f"gitleaks failed ({exc}); used built-in regex secret rules")
-            binary = None
-    if not binary:
-        f, c = scan_secrets_regex(files)
-        result.findings += f
-        result.checks += c
-        tools["gitleaks"] = "not found (regex fallback)"
 
     if version := bandit_version():
         try:
