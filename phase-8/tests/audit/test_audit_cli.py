@@ -58,6 +58,10 @@ def _audit(root, examples, bot, url):
 def test_examples_prove_every_planted_flaw_found_then_closed(bots, root, examples, settings, capsys):
     assert _audit(root, examples, "vulnerable_bot", bots["vulnerable_bot"]) == 1
     out = capsys.readouterr().out
+    [vuln_dir] = _audit_dirs(settings)
+    missed = [f for f in json.loads((vuln_dir / "flaws.json").read_text(encoding="utf-8")) if not f["found"]]
+    notes = [line for line in out.splitlines() if line.strip().startswith(("note:", "planted", "security", "behaviour"))]
+    assert not missed, f"planted flaws not found: {missed}\n" + "\n".join(notes)
     assert "planted flaws: 12/12 found" in out and "VERDICT: BLOCK" in out
     assert _audit(root, examples, "fixed_bot", bots["fixed_bot"]) == 0
     out = capsys.readouterr().out

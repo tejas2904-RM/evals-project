@@ -827,11 +827,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     except SystemExit as exc:
         return exc.code if isinstance(exc.code, int) else EXIT_OK
     except Exception as exc:
-        import click
-
-        if isinstance(exc, click.exceptions.Abort):
+        # typer >= 0.26 vendors click as typer._click, so match click's exception API rather than its classes.
+        if type(exc).__name__ == "Abort":
             return EXIT_ERROR
-        if isinstance(exc, click.ClickException):
+        if callable(getattr(exc, "show", None)) and isinstance(getattr(exc, "exit_code", None), int):
             exc.show()
             return exc.exit_code
         raise
