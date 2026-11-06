@@ -1,0 +1,43 @@
+[project]
+name = "evalpilot"
+budget_usd = 3.00
+default_provider = "offline"
+
+[models]
+bot_env = "EVALPILOT_BOT_MODEL"
+judge_env = "EVALPILOT_JUDGE_MODEL"
+max_completion_tokens = 400
+# Lowest reasoning effort the model accepts; confirmed by the Phase 2 smoke call.
+reasoning_effort = "minimal"
+
+# USD per 1M tokens. Must be filled from the OpenAI pricing page before any paid call.
+[pricing."gpt-5.4-nano"]
+input = 0.0
+output = 0.0
+
+[pricing."gpt-5.4-mini"]
+input = 0.0
+output = 0.0
+
+[providers.openai]
+base_url = "https://api.openai.com/v1"
+key_env = "OPENAI_API_KEY"
+paid = true
+
+[providers.groq]
+base_url = "https://api.groq.com/openai/v1"
+key_env = "GROQ_API_KEY"
+paid = false
+
+[providers.ollama]
+base_url_env = "OLLAMA_BASE_URL"
+base_url = "http://localhost:11434/v1"
+paid = false
+
+[providers.offline]
+paid = false
+
+[paths]
+data_dir = "data"
+runs_dir = "runs"
+cache_dir = ".cache"

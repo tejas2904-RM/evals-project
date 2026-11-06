@@ -1,0 +1,147 @@
+# LLM-specific static rules. Files are read as text; nothing is imported or executed.
+#
+# Fields: id, family (merge key root), owasp, title, globs, pattern (Python regex, per line),
+# optional line_requires / line_lacks (same line), file_requires (anywhere in the file),
+# window_lacks + window (this line and the next N lines), likelihood, impact (1-5), fix.
+
+[[rule]]
+id = "llm-output-eval"
+family = "exec-model-output"
+owasp = "LLM10"
+title = "Model output passed to eval()/exec()"
+globs = ["*.py"]
+pattern = '''\b(eval|exec)\s*\(\s*[\w.\[\]"']*(reply|response|output|completion|answer|llm|model|generated)'''
+likelihood = 4
+impact = 5
+fix = "Never evaluate model output. Parse it with a strict schema or an allow-listed calculator (ast with whitelisted nodes)."
+
+[[rule]]
+id = "llm-output-shell"
+family = "shell-model-output"
+owasp = "LLM10"
+title = "Model output reaches a shell command"
+globs = ["*.py"]
+pattern = '''(os\.system\s*\(|os\.popen\s*\(|subprocess\.\w+\s*\(.*shell\s*=\s*True)'''
+line_requires = '''(reply|response|output|completion|answer|llm|model|generated)'''
+likelihood = 4
+impact = 5
+fix = "Remove the shell call or pass an argument list with shell=False and validated, allow-listed values."
+
+[[rule]]
+id = "llm-output-raw-html"
+family = "raw-html"
+owasp = "LLM10"
+title = "Model output rendered as raw HTML"
+globs = ["*.py", "*.html", "*.jinja", "*.j2", "*.js", "*.jsx", "*.ts", "*.tsx"]
+pattern = '''(\|\s*safe\b|Markup\s*\(|dangerouslySetInnerHTML|\.innerHTML\s*=|f["'].*<[a-zA-Z][^>]*>.*\{\s*\w*(reply|answer|output|response|completion)\w*\s*\})'''
+likelihood = 4
+impact = 4
+fix = "Escape model output for its sink (html.escape / autoescaping) and sanitise any markdown before rendering."
+
+[[rule]]
+id = "prompt-concat-user-into-system"
+family = "prompt-concat"
+owasp = "LLM01"
+title = "User input formatted into the system prompt"
+globs = ["*.py", "*.js", "*.ts"]
+pattern = '''(["']role["']\s*:\s*["']system["'].*(\{\s*(user\w*|message|query|question|prompt)\s*\}|\+\s*(user\w*|message|query|question))|SYSTEM\w*\s*=\s*f["'].*\{\s*(user\w*|message|query|question)\s*\})'''
+likelihood = 3
+impact = 4
+fix = "Keep the system prompt constant; send user text only in a separate user message."
+
+[[rule]]
+id = "no-max-tokens"
+family = "no-max-tokens"
+owasp = "LLM06"
+title = "Model call without an output token cap"
+globs = ["*.py", "*.js", "*.ts"]
+pattern = '''\.(chat\.completions\.create|completions\.create|responses\.create|messages\.create)\s*\('''
+window_lacks = '''max_(completion_|output_|new_)?tokens'''
+window = 10
+likelihood = 4
+impact = 3
+fix = "Set max_completion_tokens (or max_output_tokens) on every model call."
+
+[[rule]]
+id = "temperature-on-reasoning-model"
+family = "config-hygiene"
+title = "temperature set alongside a reasoning model"
+globs = ["*.py"]
+pattern = '''(?i)\btemperature\s*='''
+file_requires = '''["'](gpt-5|o1|o3|o4)[\w.\-]*["']'''
+likelihood = 2
+impact = 2
+fix = "GPT-5.x and o-series models reject temperature; remove it and use reasoning_effort."
+
+[[rule]]
+id = "trust-remote-code"
+family = "trust-remote-code"
+owasp = "LLM04"
+title = "trust_remote_code=True executes code from a model repository"
+globs = ["*.py"]
+pattern = '''trust_remote_code\s*=\s*True'''
+likelihood = 4
+impact = 4
+fix = "Remove trust_remote_code or pin a reviewed model revision (revision=<commit sha>)."
+
+[[rule]]
+id = "unpinned-requirement"
+family = "unpinned-deps"
+owasp = "LLM04"
+title = "Dependency not pinned to an exact version"
+globs = ["requirements*.txt", "*requirements.txt"]
+pattern = '''^(?!\s*(#|-|$))(?!.*(==|--hash)).+'''
+likelihood = 3
+impact = 3
+fix = "Pin every dependency with == (ideally with --hash) and update deliberately."
+
+[[rule]]
+id = "log-prompt-pii"
+family = "log-prompt"
+owasp = "LLM02"
+title = "Prompts or user messages written to logs"
+globs = ["*.py"]
+pattern = '''\b(log|logger|logging)\.(debug|info|warning|error|critical)\s*\(.*\b(prompt|messages?|query|user_input|question|history|build_messages)\b'''
+line_lacks = '''(redact|len\()'''
+likelihood = 4
+impact = 4
+fix = "Log metadata (ids, lengths), not prompt text; redact PII if content must be logged."
+
+[[rule]]
+id = "vector-query-no-filter"
+family = "vector-no-filter"
+owasp = "LLM09"
+title = "Vector/index query without a tenant or source filter"
+globs = ["*.py"]
+pattern = '''(?i)\b(similarity_search\w*|vector_search|query_index|\w*index\.query|\w*collection\.query|\w*store\.search)\s*\('''
+line_lacks = '''(filter|where|tenant\w*|namespace|source\w*)\s*='''
+likelihood = 3
+impact = 4
+fix = "Filter every retrieval by tenant and trust level (filter={'tenant': ..., 'source': 'official'})."
+
+[[rule]]
+id = "ingest-untrusted-no-tag"
+family = "ingest-untagged"
+owasp = "LLM05"
+title = "Untrusted content indexed without a source/trust tag"
+globs = ["*.py"]
+pattern = '''\.(add|upsert|add_documents|add_texts|insert)\s*\('''
+file_requires = '''(scrape|crawl|urlopen|requests\.get|httpx\.get|upload)'''
+window_lacks = '''(source|trust\w*|origin)\s*='''
+window = 3
+likelihood = 3
+impact = 4
+fix = "Tag every ingested document with source and trust level; keep untrusted content out of answer retrieval."
+
+[[rule]]
+id = "tool-write-no-confirm"
+family = "tool-no-confirm"
+owasp = "LLM03"
+title = "Side-effecting tool with no confirmation guard"
+globs = ["*.py"]
+pattern = '''^\s*def\s+(send_\w+|delete_\w+|transfer_\w+|refund_\w+|cancel_\w+|wire_\w+|pay_\w+|post_message\w*)\s*\('''
+window_lacks = '''confirm'''
+window = 12
+likelihood = 4
+impact = 5
+fix = "Require explicit, verified human confirmation before any write or external action."

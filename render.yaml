@@ -1,0 +1,26 @@
+# Render Blueprint for the EvalPilot API (free web service), served from phase-8/.
+# Read-only and offline: never set OPENAI_API_KEY here or in the dashboard (the app refuses to start with one).
+# Set EVALPILOT_ALLOWED_ORIGINS in the dashboard once the Vercel URL exists (Phase 9).
+services:
+  - type: web
+    name: evalpilot-api
+    runtime: python
+    plan: free
+    rootDir: phase-8
+    autoDeploy: true
+    buildCommand: pip install ".[api,pdf]"
+    startCommand: uvicorn evalpilot.api.app:create_app --factory --host 0.0.0.0 --port $PORT --proxy-headers
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: EVALPILOT_API_MODE
+        value: readonly
+      - key: EVALPILOT_BOT_MODEL
+        value: gpt-5.4-nano
+      - key: EVALPILOT_JUDGE_MODEL
+        value: gpt-5.4-mini
+      - key: EVALPILOT_ALLOWED_ORIGINS
+        sync: false
+      - key: EVALPILOT_ALLOWED_ORIGIN_REGEX
+        sync: false

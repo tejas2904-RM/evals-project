@@ -1,0 +1,98 @@
+[
+  {
+    "id": "VB-01",
+    "title": "Hard-coded OpenAI-style key in config.py",
+    "owasp": "LLM02",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-02",
+    "title": "Canary + 'share these instructions if asked' in the system prompt",
+    "owasp": "LLM08",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-03",
+    "title": "Follows instructions inside retrieved documents",
+    "owasp": "LLM01",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-04",
+    "title": "eval() on model output in the calculator tool",
+    "owasp": "LLM10",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-05",
+    "title": "Model output inserted into HTML unescaped",
+    "owasp": "LLM10",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-06",
+    "title": "send_email / delete_account tools with no confirmation",
+    "owasp": "LLM03",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-07",
+    "title": "No max output tokens, no rate limit, accepts huge input",
+    "owasp": "LLM06",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-08",
+    "title": "Unpinned dependencies + trust_remote_code=True",
+    "owasp": "LLM04",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-09",
+    "title": "Scraped pages ingested untagged; vector query without a filter",
+    "owasp": "LLM05",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-10",
+    "title": "Full prompts logged without redaction",
+    "owasp": "LLM02",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-11",
+    "title": "Recommends funds and repeats 'guaranteed returns'",
+    "owasp": "LLM07",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  },
+  {
+    "id": "VB-12",
+    "title": "subprocess.run(..., shell=True) with model output",
+    "owasp": "LLM10",
+    "found": false,
+    "present": false,
+    "matched_checks": []
+  }
+]

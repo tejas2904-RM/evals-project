@@ -1,0 +1,52 @@
+[project]
+name = "evalpilot"
+budget_usd = 3.00
+default_provider = "offline"
+
+[models]
+bot_env = "EVALPILOT_BOT_MODEL"
+judge_env = "EVALPILOT_JUDGE_MODEL"
+max_completion_tokens = 400
+# Lowest reasoning effort GPT-5.4 nano/mini accept (supported: none, low, medium, high, xhigh).
+reasoning_effort = "none"
+
+# USD per 1M tokens, standard tier, from https://developers.openai.com/api/docs/pricing
+# Paid calls are refused for any model without a non-zero price here.
+[pricing."gpt-5.4-nano"]
+input = 0.20
+cached_input = 0.02
+output = 1.25
+
+[pricing."gpt-5.4-mini"]
+input = 0.75
+cached_input = 0.075
+output = 4.50
+
+[retry]
+max_attempts = 5
+base_delay_s = 1.0
+max_delay_s = 30.0
+
+[providers.openai]
+base_url = "https://api.openai.com/v1"
+key_env = "OPENAI_API_KEY"
+paid = true
+
+[providers.groq]
+base_url = "https://api.groq.com/openai/v1"
+key_env = "GROQ_API_KEY"
+paid = false
+
+[providers.ollama]
+base_url_env = "OLLAMA_BASE_URL"
+base_url = "http://localhost:11434/v1"
+paid = false
+
+[providers.offline]
+paid = false
+fixtures = "data/offline_responses.jsonl"
+
+[paths]
+data_dir = "data"
+runs_dir = "runs"
+cache_dir = ".cache"

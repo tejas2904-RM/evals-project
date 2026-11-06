@@ -1,0 +1,15 @@
+.env
+.cache/
+runs/*
+!runs/.gitkeep
+!runs/reference/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/
+*.html
+!docs/report.html
+!docs/index.html

@@ -1,0 +1,151 @@
+name: ci
+
+# The repo holds every phase; CI, Render (render.yaml rootDir) and Pages use the latest, phase-8/.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: phase-8
+    env:
+      EVALPILOT_BOT_MODEL: gpt-5.4-nano
+      EVALPILOT_JUDGE_MODEL: gpt-5.4-mini
+      # Offline only. No OPENAI_API_KEY, ever: CI must never touch the paid key.
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Secret check (tracked files; only examples/vulnerable_bot/ may hold a fake key)
+        run: python -m evalpilot.secret_check .
+
+      - name: Install gitleaks (optional; the audit falls back to regex rules)
+        run: |
+          curl -sSL https://github.com/gitleaks/gitleaks/releases/download/v8.24.0/gitleaks_8.24.0_linux_x64.tar.gz | tar -xz gitleaks
+          sudo mv gitleaks /usr/local/bin/
+
+      - name: Tests
+        run: pytest
+
+      - name: Offline run + grade
+        run: |
+          evalpilot run --provider offline
+          evalpilot grade --graders all --provider offline
+          evalpilot compare --baseline v1 --candidate v2
+          evalpilot compare --baseline v2 --candidate v3
+
+      - name: Release gate (v1 must be BLOCKED, v3 must PASS)
+        run: |
+          set +e
+          evalpilot gate --version v1; v1=$?
+          set -e
+          if [ "$v1" -ne 1 ]; then echo "expected gate v1 to exit 1 (blocked), got $v1"; exit 1; fi
+          evalpilot gate --version v3
+
+      - name: Audit example bots offline (vulnerable must BLOCK, fixed must SHIP)
+        run: |
+          python examples/vulnerable_bot/server.py --port 8765 > vulnerable.log 2>&1 &
+          python examples/fixed_bot/server.py --port 8766 > fixed.log 2>&1 &
+          for port in 8765 8766; do
+            for i in $(seq 1 30); do
+              python -c "import socket,sys; socket.create_connection(('127.0.0.1', $port), 1)" 2>/dev/null && break
+              sleep 0.5
+            done
+          done
+          set +e
+          evalpilot audit --path examples/vulnerable_bot --system-card examples/vulnerable_bot/system_card.json \
+            --target-url http://127.0.0.1:8765 --adapter examples/vulnerable_bot/adapter.toml --authorized --provider offline
+          vuln=$?
+          set -e
+          if [ "$vuln" -ne 1 ]; then echo "expected vulnerable_bot audit to exit 1 (BLOCK), got $vuln"; exit 1; fi
+          evalpilot audit --path examples/fixed_bot --system-card examples/fixed_bot/system_card.json \
+            --target-url http://127.0.0.1:8766 --adapter examples/fixed_bot/adapter.toml --authorized --provider offline
+
+      - name: Committed paid run still gates as recorded (no key; tests/compare/test_reference.py checks every version)
+        run: |
+          set +e
+          evalpilot gate --version v1 --run reference/20261106T143944Z-v1-v2-v3; ref=$?
+          set -e
+          if [ "$ref" -ne 1 ]; then echo "expected reference gate v1 to exit 1 (blocked), got $ref"; exit 1; fi
+
+      - name: Audit exports (Markdown + PDF) for the offline audits
+        run: |
+          for d in runs/audit-*; do
+            evalpilot audit-report --audit "$(basename "$d")" --format md
+            evalpilot audit-report --audit "$(basename "$d")" --format pdf
+            head -c 4 "$d/audit.pdf" | grep -q '%PDF'
+          done
+
+      - name: Final verdict on the reference run (gate AND audit; 0 = SHIP, 1 = BLOCK, anything else is an error)
+        run: |
+          set +e
+          evalpilot verdict --version v3 --run reference/20261106T143944Z-v1-v2-v3; code=$?
+          set -e
+          if [ "$code" -gt 1 ]; then echo "verdict failed with exit $code"; exit 1; fi
+
+      - name: GitHub Pages report is current (docs/report.html rebuilt offline from runs/reference/)
+        run: |
+          evalpilot report --reference --out docs/report.html
+          git diff --exit-code -- docs/report.html || { echo "docs/report.html is stale: run 'evalpilot report --reference' and commit"; exit 1; }
+
+      - name: API smoke (started the way Render starts it; hosted mode, no key)
+        env:
+          RENDER: "true"
+          EVALPILOT_API_MODE: readonly
+        run: |
+          uvicorn evalpilot.api.app:create_app --factory --host 127.0.0.1 --port 8800 > api.log 2>&1 &
+          for i in $(seq 1 40); do curl -sf http://127.0.0.1:8800/health > /dev/null && break; sleep 0.5; done
+          curl -sf http://127.0.0.1:8800/health
+          curl -sf "http://127.0.0.1:8800/api/verdict?version=v3" -o api_verdict.json
+          python -c "import json,sys; a=json.load(open('api_verdict.json')); b=json.load(open('runs/reference/20261106T143944Z-v1-v2-v3/verdict_v3.json')); sys.exit(a != b)"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -F "traces=@runs/reference/20261106T143944Z-v1-v2-v3/traces.jsonl" http://127.0.0.1:8800/api/audits)
+          if [ "$code" -ne 403 ]; then echo "readonly API accepted an upload ($code)"; exit 1; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eval-artifacts
+          path: |
+            phase-8/runs/*/gate_*.json
+            phase-8/runs/*/compare_*.json
+            phase-8/runs/audit-*/audit.md
+            phase-8/runs/audit-*/audit.pdf
+            phase-8/runs/audit-*/verdict.json
+            phase-8/runs/reference/*/verdict_*.json
+            phase-8/docs/report.html
+            phase-8/api.log
+          if-no-files-found: warn
+
+  pages:
+    # Publishes phase-8/docs (report.html, rebuilt and checked above). Enable once: Settings -> Pages -> Source: GitHub Actions.
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: evals
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: phase-8/docs
+      - id: deploy
+        uses: actions/deploy-pages@v4

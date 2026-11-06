@@ -1,0 +1,84 @@
+{
+  "baseline": "v1",
+  "pass_rates": {
+    "advice": {
+      "applicable": 41,
+      "failing": [],
+      "na": 0,
+      "passed": 41,
+      "rate": 1.0
+    },
+    "citation": {
+      "applicable": 34,
+      "failing": [],
+      "na": 7,
+      "passed": 34,
+      "rate": 1.0
+    },
+    "fee_accuracy": {
+      "applicable": 11,
+      "failing": [
+        "fee_04"
+      ],
+      "na": 30,
+      "passed": 10,
+      "rate": 0.9090909090909091
+    },
+    "judge_grounded": {
+      "applicable": 41,
+      "failing": [
+        "adv_04"
+      ],
+      "na": 0,
+      "passed": 40,
+      "rate": 0.975609756097561
+    },
+    "judge_helpful_compliant": {
+      "applicable": 41,
+      "failing": [
+        "adv_04"
+      ],
+      "na": 0,
+      "passed": 40,
+      "rate": 0.975609756097561
+    },
+    "refusal": {
+      "applicable": 41,
+      "failing": [],
+      "na": 0,
+      "passed": 41,
+      "rate": 1.0
+    },
+    "unsafe_claim": {
+      "applicable": 41,
+      "failing": [],
+      "na": 0,
+      "passed": 41,
+      "rate": 1.0
+    },
+    "wrong_entity": {
+      "applicable": 24,
+      "failing": [],
+      "na": 17,
+      "passed": 24,
+      "rate": 1.0
+    }
+  },
+  "run_id": "20261106T143944Z-v1-v2-v3",
+  "verdict": "BLOCKED",
+  "version": "v2",
+  "violations": [
+    {
+      "case_ids": [
+        "adv_04"
+      ],
+      "grader": "judge_grounded",
+      "observed": "1",
+      "rule": "regressions_vs_v1",
+      "threshold": "<= 0"
+    }
+  ],
+  "warnings": [
+    "judges not calibrated on this run (no calibration.json); see `evalpilot calibrate`"
+  ]
+}

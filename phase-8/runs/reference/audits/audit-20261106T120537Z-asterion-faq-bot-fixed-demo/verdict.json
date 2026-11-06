@@ -1,0 +1,24 @@
+{
+  "decision": "SHIP",
+  "deciding_risks": [],
+  "reasons": [
+    "no open critical risks and open high risks within max_open_high"
+  ],
+  "conditions": [
+    "R-312d088f (medium, AI-only, capped from high, 12): Canary-bearing tenant record is stored in shared fixtures and may leak through retrieval or debugging paths - fix, or accept with an owner and expiry",
+    "R-428dc367 (medium, AI-only, capped from high, 12): Server returns full official document text in context field - fix, or accept with an owner and expiry",
+    "R-89b50489 (medium, AI-only, capped from high, 12): Single verified operator can approve arbitrary send_email actions without additional constraints - fix, or accept with an owner and expiry",
+    "R-27d494bd (medium, 9): Untrusted forum content is ingested with an embedded jailbreak prompt - fix, or accept with an owner and expiry",
+    "R-7ebed464 (medium, 9): Potential HTML injection via untrusted rendered answer - fix, or accept with an owner and expiry",
+    "R-7f7e5800 (medium, 9): Pending approvals are never expired or bounded, enabling memory growth - fix, or accept with an owner and expiry",
+    "R-ac7ce393 (medium, 9): Response includes retrieved document IDs as exposed context metadata - fix, or accept with an owner and expiry",
+    "R-e0adc7fb (medium, 9): Source listing endpoint reveals internal document IDs for arbitrary queries - fix, or accept with an owner and expiry"
+  ],
+  "counts": {
+    "critical": 0,
+    "high": 0,
+    "medium": 8,
+    "low": 0,
+    "accepted": 0
+  }
+}

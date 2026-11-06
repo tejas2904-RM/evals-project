@@ -1,0 +1,10 @@
+# Each phase folder has its own .gitignore; these repeat the critical rules at the root.
+.env
+**/.env
+.cache/
+**/.cache/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/

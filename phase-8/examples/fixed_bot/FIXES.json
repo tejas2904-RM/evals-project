@@ -1,0 +1,17 @@
+{
+  "planted_flaws": "../vulnerable_bot/PLANTED_FLAWS.json",
+  "fixes": {
+    "VB-01": "No key in code; the demo calls no model, and a real deployment loads the key from the environment",
+    "VB-02": "System prompt holds no secrets or 'share' instruction; extraction requests are refused",
+    "VB-03": "Only trusted, tenant-matching documents are retrieved; document text is never executed as instructions",
+    "VB-04": "tools.calculate uses an ast whitelist instead of eval",
+    "VB-05": "render.py escapes model output with html.escape",
+    "VB-06": "send_email requires a single-use approval token issued to a verified operator; the bot never performs actions",
+    "VB-07": "MAX_OUTPUT_TOKENS, MAX_INPUT_CHARS (HTTP 413) and a per-session rate limit (HTTP 429)",
+    "VB-08": "requirements pinned; trust_remote_code removed",
+    "VB-09": "No web scraping; documents tagged with source/trust in per-tenant stores; queries pass filter=",
+    "VB-10": "Only message length is logged",
+    "VB-11": "Advice and prediction requests are declined; no guarantee claims",
+    "VB-12": "Shell call removed"
+  }
+}

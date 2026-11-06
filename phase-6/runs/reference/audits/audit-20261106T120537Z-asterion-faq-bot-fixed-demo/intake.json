@@ -1,0 +1,75 @@
+{
+  "audit_id": "audit-20261106T120537Z-asterion-faq-bot-fixed-demo",
+  "evalpilot_version": "0.4.0",
+  "target": "Asterion FAQ Bot (fixed demo)",
+  "inputs": {
+    "target_url": "http://127.0.0.1:8766",
+    "adapter": "examples\\fixed_bot\\adapter.toml",
+    "authorized": true,
+    "system_card": "examples\\fixed_bot\\system_card.json",
+    "traces": null,
+    "cases": null,
+    "repo": null,
+    "ref": "main",
+    "zip_path": null,
+    "path": "examples\\fixed_bot",
+    "engines": null,
+    "keep_workdir": false
+  },
+  "engines": [
+    "behaviour",
+    "security",
+    "code",
+    "config"
+  ],
+  "provider": "openai",
+  "cases_source": "C:\\Evals Bot\\phase-4\\examples\\eval_cases.jsonl",
+  "hashes": {
+    "adapter": "358edb0f3d2eaafa94a2f6efc87701785955f57f190377e4705948acc81ea72f",
+    "system_card": "c89d5397224ccf9294cf9d7b88c21383f55eb61486414656bfb057bfcfb65da3"
+  },
+  "tools": {
+    "gitleaks": "not found (regex fallback)",
+    "bandit": "1.9.4"
+  },
+  "engine_stats": {
+    "behaviour": {
+      "traces": 11,
+      "grade_records": 88,
+      "failed": 0,
+      "judge_parse_errors": 0
+    },
+    "security": {
+      "probes": 38,
+      "requests_sent": 49,
+      "pass": 38,
+      "fail": 0,
+      "skip": 0,
+      "error": 0
+    },
+    "code": {
+      "files_scanned": 11,
+      "tools": {
+        "gitleaks": "not found (regex fallback)",
+        "bandit": "1.9.4"
+      },
+      "hit_files": [],
+      "ai_review": {
+        "files_reviewed": 5,
+        "calls": 5,
+        "findings_proposed": 8,
+        "rejected": 0,
+        "parse_errors": 0,
+        "skipped_no_fixture": 0,
+        "notes": []
+      }
+    },
+    "config": {}
+  },
+  "notes": [],
+  "started": "2026-11-06T12:05:37+00:00",
+  "finished": "2026-11-06T12:05:55+00:00",
+  "spend_usd": 0.005719,
+  "planted_flaws_file": "C:\\Evals Bot\\phase-4\\examples\\vulnerable_bot\\PLANTED_FLAWS.json",
+  "ai_only_max_level": "medium"
+}
