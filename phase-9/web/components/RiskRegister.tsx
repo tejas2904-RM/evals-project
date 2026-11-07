@@ -6,7 +6,7 @@ import { OWASP_NAMES, label } from "@/lib/labels";
 import type { Risk } from "@/lib/types";
 
 const LEVELS = ["critical", "high", "medium", "low"];
-const SELECT = "rounded-lg border border-line bg-white px-2 py-1.5 text-sm";
+const SELECT = "rounded-lg border border-line bg-field px-2 py-1.5 text-sm";
 
 function cap(s: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1);

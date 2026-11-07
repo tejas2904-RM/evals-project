@@ -51,7 +51,7 @@ export function Card({ children, className, as: Tag = "section", ...rest }: { ch
 export function CardTitle({ children, right, className }: { children: ReactNode; right?: ReactNode; className?: string }) {
   return (
     <div className={cx("flex items-center justify-between gap-3", className)}>
-      <h2 className="text-[15px] font-semibold">{children}</h2>
+      <h2 className="text-[15px] font-normal">{children}</h2>
       {right}
     </div>
   );
@@ -61,7 +61,7 @@ export function StatCard({ label, value, sub, tone }: { label: string; value: Re
   return (
     <Card className={cx("p-4", tone === "fail" && "border-fail-soft bg-fail-soft", tone === "pass" && "border-pass-soft bg-pass-soft")}>
       <div className={cx("text-sm", tone === "fail" ? "text-fail" : tone === "pass" ? "text-pass" : "text-muted")}>{label}</div>
-      <div className={cx("mt-1 font-display text-[28px] font-semibold leading-tight", tone === "fail" && "text-fail", tone === "pass" && "text-pass")}>
+      <div className={cx("mt-1 font-display text-[28px] font-normal leading-tight tracking-[-0.01em]", tone === "fail" && "text-fail", tone === "pass" && "text-pass")}>
         {value}
       </div>
       {sub && <div className="mt-1 text-xs text-muted">{sub}</div>}
@@ -72,9 +72,9 @@ export function StatCard({ label, value, sub, tone }: { label: string; value: Re
 type Variant = "primary" | "dark" | "outline" | "ghost" | "onDark";
 
 const VARIANTS: Record<Variant, string> = {
-  primary: "bg-brand text-white hover:bg-brand-hover border border-brand",
+  primary: "bg-brand text-ink hover:bg-brand-hover border border-brand",
   dark: "bg-ink text-white hover:bg-ink-soft border border-ink",
-  outline: "bg-white text-text border border-line hover:border-faint",
+  outline: "bg-transparent text-text border border-line hover:border-faint hover:bg-surface",
   ghost: "text-brand hover:underline",
   onDark: "border border-white/25 text-white hover:border-white/60",
 };
@@ -127,7 +127,7 @@ export function FilterChip({ active, children, onClick }: { active: boolean; chi
       onClick={onClick}
       className={cx(
         "rounded-full border px-4 py-1.5 text-sm",
-        active ? "border-ink bg-ink text-white" : "border-line bg-white text-text hover:border-faint",
+        active ? "border-brand-line bg-brand text-ink" : "border-line bg-transparent text-text hover:border-faint",
       )}
     >
       {children}
@@ -201,7 +201,7 @@ export function Field({ label, children, hint, htmlFor }: { label: string; child
 }
 
 export const INPUT =
-  "w-full rounded-lg border border-line bg-white px-3 py-2.5 text-sm placeholder:text-faint focus:border-brand-line focus:outline-none disabled:bg-neutral-soft disabled:text-muted";
+  "w-full rounded-lg border border-line bg-field px-3 py-2.5 text-sm placeholder:text-faint focus:border-brand-line focus:outline-none disabled:bg-neutral-soft disabled:text-muted";
 
 export function Skeleton({ className }: { className?: string }) {
   return <div className={cx("animate-pulse rounded-lg bg-neutral-soft", className)} aria-hidden="true" />;
@@ -255,7 +255,7 @@ export function PageHeader({ eyebrow, title, right }: { eyebrow?: ReactNode; tit
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
         {eyebrow && <div className="text-sm text-muted">{eyebrow}</div>}
-        <h1 className="mt-1 text-[28px] font-semibold leading-tight">{title}</h1>
+        <h1 className="mt-1 text-[28px] font-normal leading-tight tracking-[-0.01em]">{title}</h1>
       </div>
       {right && <div className="flex flex-wrap gap-2">{right}</div>}
     </div>

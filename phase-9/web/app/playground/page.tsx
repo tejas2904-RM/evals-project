@@ -18,7 +18,7 @@ export default function PlaygroundPage() {
   );
 }
 
-const SELECT = "rounded-lg border border-line bg-white px-2 py-2 text-sm";
+const SELECT = "rounded-lg border border-line bg-field px-2 py-2 text-sm";
 
 function Playground() {
   const router = useRouter();
@@ -102,7 +102,7 @@ function Playground() {
         )}
 
         <Card className="flex flex-col gap-3 p-5">
-          <h2 className="text-[15px] font-semibold">Ask your own question</h2>
+          <h2 className="text-[15px] font-normal">Ask your own question</h2>
           {signedIn ? (
             <>
               <textarea

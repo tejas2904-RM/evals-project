@@ -96,7 +96,7 @@ function JudgeCard({ g, targets }: { g: GraderCalibration; targets: { tpr: numbe
   const metric = (name: string, value: string, target: string) => (
     <div>
       <div className="text-xs text-muted">{name}</div>
-      <div className="font-display text-xl font-semibold tabular-nums">{value}</div>
+      <div className="font-display text-xl font-normal tabular-nums tracking-[-0.01em]">{value}</div>
       <div className="text-xs text-faint">target {target}</div>
     </div>
   );

@@ -7,7 +7,7 @@ const STATE_LABEL: Record<string, string> = { present: "Present", weak: "Weak", 
 export function GuardrailPanel({ guardrails }: { guardrails: Guardrail[] }) {
   return (
     <Card className="p-5" aria-label="Guardrail coverage">
-      <h2 className="text-[15px] font-semibold">Guardrail coverage</h2>
+      <h2 className="text-[15px] font-normal">Guardrail coverage</h2>
       <ul className="mt-3 divide-y divide-line">
         {guardrails.map((g) => (
           <li key={g.layer} className="flex items-center justify-between gap-3 py-2.5 text-sm" title={g.detail}>

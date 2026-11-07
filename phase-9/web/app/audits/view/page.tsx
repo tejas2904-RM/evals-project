@@ -90,7 +90,7 @@ function Report({ audit, source }: { audit: AuditDetail; source: string | null }
           <div className="flex items-center gap-2 text-sm text-muted">
             Audit · {audit.target} · {joinList(audit.input_kinds) || "no inputs recorded"} · {shortDate(audit.finished, true)} <SourceBadge source={source} />
           </div>
-          <h1 className="mt-1 text-[28px] font-semibold leading-tight">{audit.headline}</h1>
+          <h1 className="mt-1 text-[28px] font-normal leading-tight tracking-[-0.01em]">{audit.headline}</h1>
         </div>
         <div className="flex flex-wrap gap-2">
           {signedIn && audit.rerunnable && <Button onClick={rerun}>Re-run audit</Button>}

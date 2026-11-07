@@ -99,7 +99,7 @@ function Wizard() {
         <div className="flex min-w-0 flex-col gap-4">
           <div>
             <div className="text-sm text-muted">Step {step} of 5</div>
-            <h1 className="mt-1 text-[28px] font-semibold leading-tight">{TITLES[step]}</h1>
+            <h1 className="mt-1 text-[28px] font-normal leading-tight tracking-[-0.01em]">{TITLES[step]}</h1>
             <p className="mt-1 max-w-2xl text-sm text-muted">{SUBTITLES[step]}</p>
           </div>
           {meta.data && <ModeNotice meta={meta.data} signedIn={signedIn} />}
@@ -265,7 +265,7 @@ function InputsStep(props: {
     <>
       <Card className={cx("p-5", !urlOk && "opacity-70")}>
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[15px] font-semibold">
+          <h2 className="text-[15px] font-normal">
             1. Bot URL <span className="font-normal text-muted">· live behaviour and security tests</span>
           </h2>
           {connection?.ok && <Badge tone="pass">Connected</Badge>}
@@ -299,7 +299,7 @@ function InputsStep(props: {
 
       <Card className={cx("p-5", !allowed.has("card") && "opacity-70")}>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-[15px] font-semibold">
+          <h2 className="text-[15px] font-normal">
             2. System card JSON <span className="font-normal text-muted">· instructions, tools, data, guardrails</span>
           </h2>
           <div className="flex gap-2">
@@ -349,7 +349,7 @@ function InputsStep(props: {
       </Card>
 
       <Card className={cx("p-5", !codeOk && "opacity-70")}>
-        <h2 className="text-[15px] font-semibold">
+        <h2 className="text-[15px] font-normal">
           3. Code <span className="font-normal text-muted">· read only, never run · deleted after the audit</span>
         </h2>
         <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -470,14 +470,14 @@ function RunStep({ jobId }: { jobId: string | null }) {
   return (
     <Card className="flex flex-col gap-4 p-5" aria-live="polite">
       <div className="flex items-center justify-between">
-        <h2 className="text-[15px] font-semibold">{job?.name || "Audit"}</h2>
+        <h2 className="text-[15px] font-normal">{job?.name || "Audit"}</h2>
         <Badge tone={job?.status === "done" ? "pass" : job?.status === "failed" ? "fail" : "brand"}>{job?.status ?? "starting"}</Badge>
       </div>
       <ul className="flex flex-col gap-2">
         {ENGINES.map((e) => {
           const state = job?.progress[e] ?? "queued";
           return (
-            <li key={e} className="flex items-center justify-between rounded-lg border border-line bg-white px-3 py-2 text-sm">
+            <li key={e} className="flex items-center justify-between rounded-lg border border-line bg-field px-3 py-2 text-sm">
               <span>{ENGINE_LABELS[e]?.name}</span>
               <Badge tone={STATE_TONE[state] ?? "muted"}>{state}</Badge>
             </li>

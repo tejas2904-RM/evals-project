@@ -64,7 +64,7 @@ function Dashboard({ run, botName, source }: { run: RunSummary; botName: string;
                 </span>
                 <Badge tone={passed ? "pass" : "fail"}>{gateLabel(s.gate)}</Badge>
               </div>
-              <div className="mt-3 font-display text-[34px] font-semibold leading-none">
+              <div className="mt-3 font-display text-[34px] font-normal leading-none tracking-[-0.01em]">
                 {s.cases_passed} / {s.cases_total}
               </div>
               <div className="mt-2 text-sm text-muted">{parts.join(" · ")}</div>
@@ -96,8 +96,8 @@ function Dashboard({ run, botName, source }: { run: RunSummary; botName: string;
         <div className="flex flex-col gap-4">
           <OpenRisks audit={botAudit} />
           <Card className="p-4">
-            <h2 className="text-[15px] font-semibold">Judges trusted</h2>
-            <div className="mt-2 font-display text-[28px] font-semibold leading-none">
+            <h2 className="text-[15px] font-normal">Judges trusted</h2>
+            <div className="mt-2 font-display text-[28px] font-normal leading-none tracking-[-0.01em]">
               {trusted} of {run.judges_trusted.length}
             </div>
             <p className="mt-2 text-xs text-muted">
@@ -110,9 +110,9 @@ function Dashboard({ run, botName, source }: { run: RunSummary; botName: string;
             </Link>
           </Card>
           <Card className="p-4">
-            <h2 className="text-[15px] font-semibold">OpenAI spend</h2>
+            <h2 className="text-[15px] font-normal">OpenAI spend</h2>
             <div className="mt-2 flex items-baseline gap-2">
-              <span className="font-display text-[28px] font-semibold leading-none">{usd(spend.total_usd)}</span>
+              <span className="font-display text-[28px] font-normal leading-none tracking-[-0.01em]">{usd(spend.total_usd)}</span>
               <span className="text-xs text-muted">of {usd(spend.budget_usd)} cap</span>
             </div>
             <div className="mt-3 h-2 rounded-full bg-neutral-soft" role="img" aria-label={`${pct(spend.total_usd / spend.budget_usd)} of the budget used`}>
@@ -176,7 +176,7 @@ function Dashboard({ run, botName, source }: { run: RunSummary; botName: string;
 function OpenRisks({ audit }: { audit: AuditBrief | undefined }) {
   return (
     <Card className="p-4">
-      <h2 className="text-[15px] font-semibold">Open risks</h2>
+      <h2 className="text-[15px] font-normal">Open risks</h2>
       {audit ? (
         <>
           <div className="mt-2 flex flex-wrap gap-1.5">

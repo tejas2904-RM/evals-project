@@ -72,7 +72,7 @@ function Cases() {
           <div className="flex items-center gap-2 text-sm text-muted">
             Run {version}-{run.data?.meta.provider ?? "…"} · {meta.data?.bots[0]?.name.replace(" (demo)", "") ?? "Demo bot"} <SourceBadge source={page.source} />
           </div>
-          <h1 className="mt-1 text-[28px] font-semibold leading-tight">Case explorer</h1>
+          <h1 className="mt-1 text-[28px] font-normal leading-tight tracking-[-0.01em]">Case explorer</h1>
         </div>
         <label className="flex w-full max-w-[290px] flex-col gap-1 text-sm text-muted">
           Search questions and answers
@@ -91,7 +91,7 @@ function Cases() {
         <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
           <label className="flex items-center gap-2">
             Version
-            <select className="rounded-lg border border-line bg-white px-2 py-2 text-sm text-text" value={version} onChange={(e) => set({ version: e.target.value })}>
+            <select className="rounded-lg border border-line bg-field px-2 py-2 text-sm text-text" value={version} onChange={(e) => set({ version: e.target.value })}>
               {versions.map((v) => (
                 <option key={v} value={v}>
                   {v}
@@ -101,7 +101,7 @@ function Cases() {
           </label>
           <label className="flex items-center gap-2">
             Check
-            <select className="rounded-lg border border-line bg-white px-2 py-2 text-sm text-text" value={check} onChange={(e) => set({ check: e.target.value, case: null })}>
+            <select className="rounded-lg border border-line bg-field px-2 py-2 text-sm text-text" value={check} onChange={(e) => set({ check: e.target.value, case: null })}>
               <option value="all">All checks</option>
               {graderOrder(meta.data?.graders ?? []).map((g) => (
                 <option key={g} value={g}>
@@ -182,7 +182,7 @@ function CaseDetail({ item, version, versions, run, runId }: { item: CaseItem; v
         <Badge tone={t.status?.passed ? "pass" : "fail"}>{t.status?.passed ? "Passed" : "Failed"}</Badge>
       </div>
       <div className="mt-4 text-sm text-muted">Question</div>
-      <h2 className="mt-1 text-[19px] font-semibold">{item.query}</h2>
+      <h2 className="mt-1 text-[19px] font-normal">{item.query}</h2>
 
       <div className="mt-5 text-sm text-muted">Bot answer</div>
       <div className="mt-1 whitespace-pre-wrap break-words rounded-lg bg-neutral-soft p-4 text-[15px]">{t.answer}</div>
@@ -262,7 +262,7 @@ function LabelForm({ item, version, runId, graders }: { item: CaseItem; version:
       <p className="text-muted">Your judgement of this answer for one check. Labels calibrate the LLM judges (data/labels.jsonl).</p>
       <label className="flex items-center gap-2">
         Check
-        <select className="rounded-lg border border-line bg-white px-2 py-1.5" value={grader} onChange={(e) => setGrader(e.target.value)}>
+        <select className="rounded-lg border border-line bg-field px-2 py-1.5" value={grader} onChange={(e) => setGrader(e.target.value)}>
           {ordered.map((g) => (
             <option key={g} value={g}>
               {g} · {label(GRADER_LABELS, g)}

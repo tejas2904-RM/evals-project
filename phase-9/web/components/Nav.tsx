@@ -24,10 +24,10 @@ export function Nav() {
 
   if (path.startsWith("/audits/new/")) {
     return (
-      <header className="bg-ink text-white">
+      <header className="sticky top-0 z-40 border-b border-line bg-header text-white backdrop-blur-[12px]">
         <div className="mx-auto flex h-16 max-w-[1100px] items-center justify-between px-5">
           <div className="flex items-center gap-6">
-            <Link href="/" className="font-display text-lg font-bold">
+            <Link href="/" className="font-display text-lg tracking-[-0.01em]">
               EvalPilot
             </Link>
             <span className="text-sm text-zinc-300">{signedIn ? "Admin · New audit" : "New audit"}</span>
@@ -44,10 +44,10 @@ export function Nav() {
   const bots = meta?.bots ?? [];
 
   return (
-    <header className="bg-ink text-white">
+    <header className="sticky top-0 z-40 border-b border-line bg-header text-white backdrop-blur-[12px]">
       <nav aria-label="Main" className="mx-auto flex h-16 max-w-[1100px] items-center justify-between gap-4 px-5">
         <div className="flex min-w-0 items-center gap-6">
-          <Link href="/" className="font-display text-lg font-bold">
+          <Link href="/" className="font-display text-lg tracking-[-0.01em]">
             EvalPilot
           </Link>
           <ul className="hidden items-center gap-1 lg:flex">
@@ -71,7 +71,7 @@ export function Nav() {
           {BOT_PAGES.includes(path) && bots.length > 0 && (
             <label className="hidden items-center text-sm 2xl:flex">
               <span className="sr-only">Bot</span>
-              <select className="rounded-md border border-white/25 bg-ink px-2 py-1.5 text-sm text-white" defaultValue={bots[0]?.run_id}>
+              <select className="rounded-md border border-white/25 bg-transparent px-2 py-1.5 text-sm text-white" defaultValue={bots[0]?.run_id}>
                 {bots.map((b) => (
                   <option key={b.run_id} value={b.run_id}>
                     {b.name}

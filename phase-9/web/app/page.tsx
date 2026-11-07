@@ -69,18 +69,20 @@ export default function HomePage() {
   return (
     <div className="flex flex-col gap-10">
       <section className="relative">
-        <div className="rounded-[var(--radius-hero)] bg-ink px-6 pb-28 pt-12 text-center text-white">
-          <span className="inline-block rounded-full border border-brand-line bg-brand/60 px-3 py-1 text-xs text-[#b9e4c9]">
+        <div className="px-2 pt-10 text-center">
+          <span className="inline-block rounded-full border border-brand-line bg-brand/20 px-3 py-1 text-xs text-brand">
             Mapped to the OWASP Top 10 for LLM Applications 2026
           </span>
-          <h1 className="mx-auto mt-4 max-w-3xl text-[34px] font-bold leading-tight sm:text-[42px]">Is your AI chatbot safe to ship?</h1>
-          <p className="mx-auto mt-3 max-w-2xl text-[17px] text-zinc-300">
+          <h1 className="mx-auto mt-4 max-w-3xl text-[34px] font-normal leading-tight tracking-[-0.01em] sm:text-[42px]">
+            Is your AI chatbot safe to ship?
+          </h1>
+          <p className="mx-auto mt-3 max-w-2xl text-[17px] text-muted">
             Test its answers, attack it the way a hacker would, and read its code. Get a scorecard, a risk register and a guardrail map, with
             evidence for every finding.
           </p>
         </div>
 
-        <Card className="relative mx-auto -mt-20 max-w-[800px] bg-white p-5 shadow-sm">
+        <Card className="relative mx-auto mt-8 max-w-[800px] p-5">
           <div role="radiogroup" aria-label="Audit inputs" className="grid gap-3 sm:grid-cols-3">
             {TILES.map((t) => (
               <button
@@ -91,7 +93,7 @@ export default function HomePage() {
                 onClick={() => setTile(t.id)}
                 className={cx(
                   "rounded-lg border p-3 text-left",
-                  tile === t.id ? "border-brand-line bg-brand-soft" : "border-line bg-white hover:border-faint",
+                  tile === t.id ? "border-brand-line bg-brand-soft" : "border-line bg-field hover:border-faint",
                 )}
               >
                 <span className="flex items-center justify-between gap-2">
@@ -211,7 +213,7 @@ export default function HomePage() {
         {STEPS.map((s) => (
           <div key={s.n}>
             <div className="text-xs font-semibold text-brand">{s.n}</div>
-            <h2 className="mt-1 text-[15px] font-semibold">{s.title}</h2>
+            <h2 className="mt-1 text-[15px] font-normal">{s.title}</h2>
             <p className="mt-1 text-sm text-muted">{s.text}</p>
           </div>
         ))}
@@ -219,16 +221,16 @@ export default function HomePage() {
 
       <section className="grid gap-4 sm:grid-cols-2">
         <Link href={demo ? `/audits/view/?id=${demo.audit_id}&tab=risks` : "/audits/"} className="block">
-          <Card className="h-full bg-white p-5 hover:border-faint">
+          <Card className="h-full p-5 hover:border-faint">
             <div className="text-sm text-muted">No bot handy?</div>
-            <h2 className="mt-1 text-[17px] font-semibold">See the demo audit</h2>
+            <h2 className="mt-1 text-[17px] font-normal">See the demo audit</h2>
             <p className="mt-1 text-sm text-muted">A mutual-fund FAQ bot tested in three versions, from blocked to ship it.</p>
           </Card>
         </Link>
         <Link href="/playground/" className="block">
-          <Card className="h-full bg-white p-5 hover:border-faint">
+          <Card className="h-full p-5 hover:border-faint">
             <div className="text-sm text-muted">Two minutes</div>
-            <h2 className="mt-1 text-[17px] font-semibold">Try to break the demo bot</h2>
+            <h2 className="mt-1 text-[17px] font-normal">Try to break the demo bot</h2>
             <p className="mt-1 text-sm text-muted">Ask the old and new versions the same question in the playground.</p>
           </Card>
         </Link>
@@ -236,9 +238,9 @@ export default function HomePage() {
 
       {recent && (
         <Link href={`/audits/view/?id=${recent.audit_id}`} className="block">
-          <Card className="bg-white p-5 hover:border-faint">
+          <Card className="p-5 hover:border-faint">
             <div className="text-sm text-muted">Admin · recent</div>
-            <h2 className="mt-1 text-[17px] font-semibold">{recent.target} audit</h2>
+            <h2 className="mt-1 text-[17px] font-normal">{recent.target} audit</h2>
             <p className={cx("mt-1 text-sm", recent.decision === "SHIP" ? "text-pass" : "text-fail")}>
               {recent.decision === "SHIP" ? "Ship it" : "Blocked"} · {blockingRisks(recent.counts)} · {shortDate(recent.finished)}
             </p>
