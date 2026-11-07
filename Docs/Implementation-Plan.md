@@ -19,8 +19,8 @@ Rule from the spec: **ask before adding any dependency not listed in §0.3.**
 | 5 Labels + calibration | `phase-5/` | built — 415 tests; paid run regraded with judge prompt v2 ($0.31 total spend); **owner labels pending** (≥ 30 per judge) |
 | 6 Compare + gate | `phase-6/` | built — 454 tests; offline gate v1 BLOCKED / v3 PASS; paid v3 blocked by 1 judge case (adv_05); CI written, not yet run on GitHub ($0.40 total spend) |
 | 7 Report, audit export, final verdict, DoD | `phase-7/` | built — 487 tests; `docs/report.html` from `runs/reference/`; audit PDFs; final verdict v3 **BLOCK** (adv_05 judge case, pending owner labels); Pages + CI not yet run on GitHub ($0.41 total spend) |
-| 8 Backend API on Render | `phase-8/` | built — 530 tests; FastAPI app + `render.yaml` + `evalpilot serve`; readonly + keyless on Render; not yet deployed (needs push + Render account) |
-| 9 Frontend on Vercel | `phase-9/` | planned |
+| 8 Backend API on Render | `phase-8/` | built — 531 tests; FastAPI app + `render.yaml` + `evalpilot serve`; readonly + keyless on Render; pushed to GitHub, CI green; Render deploy in progress |
+| 9 Frontend on Vercel (Next.js + Tailwind) | `phase-9/` | planned — screens fixed by `Docs/mockups/` |
 
 ---
 
@@ -80,10 +80,14 @@ phase-N/
 │   ├── report/   build.py html.py                      # Phase 7
 │   └── api/      app.py repository.py jobs.py settings.py   # Phase 8
 ├── render.yaml                                 # Phase 8 (Render Blueprint)
-├── web/                                        # Phase 9 (Vercel project root)
-│   ├── package.json · vercel.json · index.html
+├── web/                                        # Phase 9 (Vercel project root, Next.js + Tailwind)
+│   ├── package.json · next.config.ts · vercel.json · postcss.config.mjs · tsconfig.json
+│   ├── app/            layout.tsx globals.css page.tsx dashboard/ audits/ audits/new/ cases/
+│   │                   compare/ calibration/ playground/ admin/
+│   ├── components/     ui/ (Badge, Card, Button, Tabs, Stepper, Bar, Table) + feature components
+│   ├── lib/            api.ts types.ts (generated) labels.ts format.ts admin.ts
 │   ├── public/snapshot.json                    # reference context, built offline
-│   └── src/ api.ts types.ts views/ components/
+│   └── scripts/        export-snapshot.mjs csp-hashes.mjs
 ├── runs/   (gitignored except runs/reference/)
 └── tests/  (… + tests/api/ in Phase 8)
 ```
@@ -104,9 +108,12 @@ phase-N/
 | `fpdf2` (pure Python, no system libraries) | PDF export | approved in Phase 7 (optional `pdf` extra) |
 | `fastapi` + `uvicorn` | Phase 8 API and its server on Render | approved in Phase 8 (optional `api` extra) |
 | `python-multipart` | Phase 8 file uploads (`POST /api/audits`) | approved in Phase 8 (optional `api` extra) |
-| Frontend framework (proposal: Vite + React + TypeScript; alternative: Next.js) | Phase 9 web app | **confirm before Phase 9** |
-| `vitest` + Testing Library (+ optional Playwright) | Phase 9 tests | **confirm before Phase 9** |
+| `next` (App Router, static export) + `react` + `react-dom` + `typescript` | Phase 9 web app | approved for Phase 9 |
+| `tailwindcss` v4 + `@tailwindcss/postcss` | Phase 9 styling (design tokens in `globals.css`) | approved for Phase 9 |
+| `eslint` + `eslint-config-next` | Phase 9 lint | **confirm before Phase 9** (ships with `create-next-app`) |
+| `vitest` + `@testing-library/react` + `jsdom` (+ optional Playwright) | Phase 9 tests | **confirm before Phase 9** |
 | `openapi-typescript` | Phase 9 types generated from the API schema | **confirm before Phase 9** |
+| Fonts via `next/font/google` (Space Grotesk headings, Inter body) | self-hosted at build time, no runtime font requests | no package; confirm with the frontend deps |
 
 Anything else → ask first.
 
@@ -469,46 +476,150 @@ Phase 8 status (as built):
 - [x] 8.9 CI runs the API tests, then starts the app with `RENDER=true` and compares `/api/verdict` with the CLI.
   It also checks that a POST gets 403.
 - [x] 8.10 README API section with Render deploy steps.
-- [ ] Deploy: connect the Blueprint on Render, then set `EVALPILOT_ALLOWED_ORIGINS` after Phase 9.
+- [ ] Deploy: connect the Blueprint on Render (`rootDir: phase-9`), then set `EVALPILOT_ALLOWED_ORIGINS` to the Vercel URL and `http://localhost:3000`.
 
 ---
 
-## Phase 9 — Frontend on Vercel
+## Phase 9 — Frontend on Vercel (Next.js + Tailwind)
 
-Copy `phase-8/` → `phase-9/`; the app lives in `phase-9/web/` (Vercel project root directory).
+Copy `phase-8/` → `phase-9/`; the app lives in `phase-9/web/` (Vercel project root directory). The five screens in
+`Docs/mockups/` are the visual spec: layout, copy, components and colours follow them. Names and numbers in the mockups
+("Northwind", "GymCoach", $1.42, 58 security tests) are placeholders. Every number on screen comes from the API or the
+snapshot, never from the frontend.
+
+| Mockup | Route | Built from |
+|---|---|---|
+| [`1-home.png`](mockups/1-home.png) | `/` | `/api/meta`, `/api/audits` |
+| [`2-dashboard.png`](mockups/2-dashboard.png) | `/dashboard` | `/api/runs/{id}`, `/api/verdict`, own-bot audit |
+| [`3-audit-report.png`](mockups/3-audit-report.png) | `/audits/view?id=…&tab=risks` | `/api/audits/{id}` |
+| [`4-new-audit-wizard.png`](mockups/4-new-audit-wizard.png) | `/audits/new?step=2` | `/api/meta`, `/api/estimate`, `POST /api/audits`, `/api/jobs/{id}` |
+| [`5-case-explorer.png`](mockups/5-case-explorer.png) | `/cases?run=…&case=…` | `/api/runs/{id}/cases` |
+
+Routes without a mockup reuse the same components: `/audits` (list), `/compare`, `/calibration`, `/playground`, `/admin`.
+
+### 9.0 Decisions
+
+- **Next.js App Router with `output: "export"`.** Vercel serves a static build from its CDN; there are no serverless
+  functions, no server components fetching data, and no secrets. All data is fetched in the browser from the Render API.
+  IDs go in search params (`/audits/view?id=`) rather than dynamic segments, so uploaded audits that didn't exist at
+  build time still have working links. "Copy link" copies these URLs.
+- **Tailwind v4** with design tokens in `app/globals.css` (`@theme`), taken from the mockups:
+
+  | Token | Use | Value (approx.) |
+  |---|---|---|
+  | `ink` | top nav, hero, secondary dark button | `#111214` |
+  | `page` | page background | `#e8ebee` |
+  | `surface` / `line` | cards / card borders | `#f8f9fa` / `#d9dde1` |
+  | `brand` / `brand-soft` | primary buttons, active nav, v3 bars / selected card, active list item | `#0c3b2a` / `#e3f1e8` |
+  | `pass` | "Ship it", "Passed", "Present", "Added", "Connected" badges | text `#1e6b3a` on `#dcf3e3` |
+  | `fail` | "Blocked", "Failed", "High", "Missing" badges | text `#b42318` on `#fde2e2` |
+  | `warn` | "Medium", "Weak", untrusted-document chip | text `#8a6100` on `#fdf0c4` |
+  | `muted` | "Low", "Optional", v1 bars, helper text | `#9aa1a9` |
+
+  Radius 12 px on cards, 20 px on the hero, pills fully rounded. Headings use Space Grotesk and body text uses Inter
+  (`next/font`, self-hosted). Monospace (grader ids, document ids, JSON) uses the system mono stack.
+- **Plain-language grader names** live in `lib/labels.ts`, and the raw id is shown next to them where the mockups do
+  (case explorer checks). The dashboard shows all 8 rows (the mockup shows 7):
+
+  | Grader id | Label |
+  |---|---|
+  | `fee_accuracy` | Correct facts |
+  | `refusal` | Refusals |
+  | `advice` | No fund advice |
+  | `unsafe_claim` | No unsafe claims |
+  | `citation` | Citations |
+  | `wrong_entity` | Right fund |
+  | `judge_helpful_compliant` | Answers the question |
+  | `judge_grounded` | Faithful to context |
+
+  Version labels: v1 "first demo", v2 "guardrails", v3 "entity filter". Gate states: PASS → "Ship it" / "Passed",
+  BLOCK → "Blocked".
+- **Two modes, one UI.** The mockups show live bot-URL audits, AI review, cost estimates, labelling and an
+  "Admin sign in". The hosted stack can't do those without breaking the Phase 8 rules (no key on Render, no URL probing
+  from a public host). So they exist only in **admin mode**, which runs on the owner's machine:
+
+  | Feature | Public (Vercel → Render) | Admin (`npm run dev` → `evalpilot serve --admin` on 127.0.0.1) |
+  |---|---|---|
+  | Dashboard, audits, cases, compare, calibration, exports | yes | yes |
+  | Home "Start audit" with a bot URL | disabled; explains that live audits run locally and links the demo audit | yes, needs the permission checkbox (maps to `--authorized`) |
+  | Wizard: system card paste/upload, zip upload | only if Render runs `jobs` mode (offline engines, no AI review) | yes |
+  | Wizard: public GitHub repo URL, "Test connection", AI review | no | yes |
+  | Cost estimate and "left of your $3.00 cap" | shows "$0 (offline)" | yes, from the pricing table and the spend ledger |
+  | Playground | the 41 reference questions, answered from stored traces ($0) | also free-text questions, live v1/v3 answers under the budget guard |
+  | Case explorer "Label this answer", audit "Re-run audit" | hidden | yes (writes `data/labels.jsonl` / starts a job) |
+  | Admin · recent audits card on Home | hidden | yes |
+
+  "Admin sign in" on the Vercel site opens `/admin`, which explains how to start admin mode locally.
+  `evalpilot serve --admin` binds to `127.0.0.1` only, refuses to start when hosted (`RENDER=true` or
+  `EVALPILOT_HOSTED=1`), and prints a random per-process token. The local frontend sends it as
+  `Authorization: Bearer …` and keeps it in `sessionStorage`. This is a session token for the owner, not user accounts.
+- **CSP with a static export.** Next inlines small bootstrap scripts. `scripts/csp-hashes.mjs` runs after `next build`
+  and hashes every inline script in `out/`. The hashes go into a per-page `<meta http-equiv="Content-Security-Policy">`
+  (Vercel reads `vercel.json` before the build, so it cannot carry per-build hashes). `vercel.json` still sets
+  `frame-ancestors 'none'`, `X-Frame-Options`, `nosniff` and `Referrer-Policy`. `script-src` must not contain
+  `'unsafe-inline'` or `'unsafe-eval'`. Tailwind needs `style-src 'self' 'unsafe-inline'`.
+
+### 9.1 Tasks
 
 | # | Task | Files |
 |---|---|---|
-| 9.1 | Scaffold (framework confirmed before starting), TypeScript strict, lint + format, routing | `web/` |
-| 9.2 | Typed API client from `/openapi.json`; `VITE_API_BASE_URL`; timeouts; cold-start retry with a visible "waking the API" state | `web/src/api.ts`, `web/src/types.ts` |
-| 9.3 | Offline snapshot: build step runs `evalpilot report`'s context export for `runs/reference/` → `public/snapshot.json`; the UI falls back to it (labelled "snapshot") when the API is unreachable | `web/public/snapshot.json`, build script |
-| 9.4 | Overview: final verdict banner (gate AND audit, deciding rules/risks), spend vs budget, gate per version with violation lines | `web/src/views/Overview.tsx` |
-| 9.5 | Pass-rate matrix (8 × 3, `n/a`, thresholds), Compare (fixed/regressed case ids), Calibration (TPR/TNR/accuracy/κ, pending state) | `web/src/views/` |
-| 9.6 | Case explorer: filters (category, version, failing grader, text), answer + retrieved docs + 8 grade bits with evidence; answers rendered as plain text | `web/src/views/Cases.tsx` |
-| 9.7 | Audits: list; detail with risk register sortable by severity, coverage heatmap, planted flaws, evidence drill-down, Markdown/PDF download links | `web/src/views/Audits.tsx` |
-| 9.8 | Run an audit (only if the API reports `jobs` mode): upload form → job polling → link to the result | `web/src/views/NewAudit.tsx` |
-| 9.9 | `vercel.json`: SPA rewrites; headers `Content-Security-Policy` (`default-src 'self'; connect-src 'self' <render-url>`), `X-Content-Type-Options`, `Referrer-Policy`; env `VITE_API_BASE_URL` per environment (production / preview) | `web/vercel.json` |
-| 9.10 | CI job: `npm ci` → lint → typecheck → test → build (no secrets); Vercel deploys from Git (preview per PR, production on main) | `.github/workflows/ci.yml` |
-| 9.11 | Add the Vercel origin(s) to the Render `EVALPILOT_ALLOWED_ORIGINS`; README: live links (Vercel app, Render API, GitHub Pages report) | `README.md` |
+| 9.1 | Scaffold Next.js (App Router, TypeScript strict, `output: "export"`, `trailingSlash`), Tailwind v4 + tokens, fonts; app shell: dark top nav (logo, Dashboard · Audits · Cases · Compare · Calibration · Playground, bot selector, "New audit" / "Admin sign in"), active item as a green pill. ESLint was not approved; a Vitest source scan bans `dangerouslySetInnerHTML` / `innerHTML` / `eval` | `web/app/layout.tsx`, `web/app/globals.css`, `web/components/Nav.tsx`, `web/test/security.test.ts` |
+| 9.2 | UI kit matching the mockups: `Badge` (pass/fail/warn/muted), `Card`, `StatCard`, `Button` (primary green, dark, outline), `Tabs`, `Stepper`, `PairedBar` (grey v1 over green v3), `Table`, `Chip`, `EmptyState`, `ApiStatus` ("waking the API…", "snapshot" label) | `web/components/ui/` |
+| 9.3 | Typed API client: `lib/types.ts` is hand-written; `test/contract.test.ts` type-checks `public/snapshot.json` against it (`openapi-typescript` was not approved). `NEXT_PUBLIC_API_BASE_URL`; 10 s timeout; cold-start retry with backoff up to ~60 s while showing "waking the API"; admin token header when present | `web/lib/api.ts`, `web/lib/types.ts`, `web/lib/admin.ts`, `web/test/contract.test.ts` |
+| 9.4 | Snapshot fallback: `evalpilot snapshot` (not `report --json`) writes the read-only API responses, keyed by request path, to `web/public/snapshot.json`; on API failure (status 0 / 502 / 503 / 504) every read view renders from it with a "snapshot" badge | `src/evalpilot/api/snapshot.py`, `src/evalpilot/cli.py`, `web/public/snapshot.json` |
+| 9.5 | **Home** (`1-home.png`): dark hero with the OWASP Top 10 for LLM Apps 2026 badge, title "Is your AI chatbot safe to ship?" and subtitle; floating input card with three selectable input tiles (Bot URL, System card JSON, GitHub repo · Optional) showing "Added" when filled; endpoint field + "Advanced: request and answer format"; permission checkbox; "N of 3 inputs added · est. $X"; "Start audit" (disabled until there's an input and the box is ticked; opens the wizard prefilled). Below it: the 3-step explainer, "See the demo audit" and "Try to break the demo bot" cards, and the admin "recent audit" card | `web/app/page.tsx` |
+| 9.6 | **Dashboard** (`2-dashboard.png`): bot line ("… · latest run <date> · 41 test questions"), "Export report" (GitHub Pages report) and "Read the case study" (README section); 3 version cards (cases passing all graders / 41, critical failures, regressions, gate badge); "Pass rate by failure mode" with paired v1/v3 bars and "79% → 96%" text, `n/a` shown as a dash; side cards: Open risks (high/medium/low pills + "View risk register"), Judges trusted ("1 of 2" + "<judge> needs N more labels"), OpenAI spend (amount, bar, "of $3.00 cap"); Recent runs table (run, bot, passed, fixed / regressed, gate, cost) | `web/app/dashboard/page.tsx` |
+| 9.7 | **Audit report** (`3-audit-report.png`): breadcrumb ("Audit · <bot> · <inputs> · <date>"), headline from the verdict ("Blocked: 2 high risks need fixing" / "Ship it: no high risks"), "Re-run audit" (admin) and "Export PDF"; stat cards Verdict (red/green tint), Quality %, Security tests passed x / y, Code findings; tabs Overview · Evals · Security · Code · Risks · Guardrails (tab in the URL); risk register with Severity and OWASP filters, rows (severity pill, title, OWASP id + name, Open/Accepted) that expand to Evidence · Found by · Score (likelihood × impact) · Fix; Guardrail coverage panel (Present / Weak / Missing) with the note "Present needs a passing live test or code evidence"; `/audits` lists all audits with verdict and risk counts | `web/app/audits/` |
+| 9.8 | **New audit wizard** (`4-new-audit-wizard.png`): left stepper Name → Inputs → Engines → Permission → Run, with ticks on finished steps; Inputs step has three numbered cards: (1) Bot URL with endpoint, request body template (`$QUESTION`), answer path, "Test connection" and the sample reply, "Connected" badge; (2) System card JSON with "Upload file", "Draft from code", a JSON textarea and live validation ("Valid · 1 tool · 2 data sources · 3 guardrails declared"); (3) Code: public GitHub repo or ".zip (max 5 MB)" with "read only, never run · deleted after the audit"; footer cost estimate vs remaining cap, Back / "Next: choose engines". Engines step toggles behaviour, security, code, config review and AI review with per-engine cost. Run step polls the job and shows per-engine progress, then links to the report. Inputs not allowed in the current mode are disabled with a one-line reason | `web/app/audits/new/` |
+| 9.9 | **Case explorer** (`5-case-explorer.png`): run line, search box, filter chips All / Failed / Passed / Critical with counts, "Check" dropdown (failing grader), version from the run; list (id · category, status pill, question) and detail (question, bot answer, checks with ✓/✗, grader id and evidence, retrieved documents as chips with an "untrusted" warn chip, "Label this answer" (admin), "Compare with v3", "Copy link") | `web/app/cases/page.tsx` |
+| 9.10 | **Compare, Calibration, Playground** in the same style: Compare shows fixed / regressed case ids per grader for v1→v2 and v2→v3 with links into the case explorer; Calibration shows TPR, TNR, accuracy and κ per judge and the "needs N more labels" state; Playground asks one question of two versions side by side (answers, citations, grader bits) | `web/app/compare/`, `web/app/calibration/`, `web/app/playground/` |
+| 9.11 | **API additions** needed by the screens (Python, in `phase-9/src/evalpilot/api/`, with tests): run summary adds per-version `cases_passed`, `critical_failures`, `regressions`, `cost_usd`; audit detail adds `quality_pct`, security `passed/total`, code finding count, per-guardrail `present/weak/missing`, risk `status` and `fix`; `/api/meta` reports `mode`, `admin`, bots, judges trusted and labels needed; `GET /api/estimate` (cost per engine + remaining budget; `$0` when offline); `/api/jobs/{id}` adds per-engine progress; `POST /api/playground` (hosted: reference case ids only, answers from stored traces); admin-only `POST /api/connection-test`, `POST /api/system-card/draft` (static, from the code engine's findings, no AI), URL and repo targets on `POST /api/audits`, `POST /api/labels`; `evalpilot serve --admin` | `api/app.py`, `api/repository.py`, `api/jobs.py`, `api/settings.py`, `cli.py` |
+| 9.12 | `vercel.json`: `frame-ancestors`, `X-Frame-Options`, `nosniff`, `Referrer-Policy`. Per-page CSP meta (hashed `script-src`, `connect-src 'self' <API origin>`) is written by `csp-hashes.mjs` after `next build`. `NEXT_PUBLIC_API_BASE_URL` per environment | `web/vercel.json`, `web/scripts/csp-hashes.mjs` |
+| 9.13 | CI job `web`: `npm ci` → typecheck → test → `next build` (includes CSP hashes). The evals job also regenerates the snapshot and fails if `web/public/snapshot.json` drifted. Vercel deploys from Git with Root Directory `phase-9/web` | `.github/workflows/ci.yml` |
+| 9.14 | Set the Vercel origin(s) in Render `EVALPILOT_ALLOWED_ORIGINS` / `EVALPILOT_ALLOWED_ORIGIN_REGEX`; README: live links (Vercel app, Render API, GitHub Pages report), screenshots, how to run admin mode | `README.md` |
 
-Tests:
-- component tests per view, using the reference snapshot as fixture data;
-- the API client handles timeout, 404 and cold start;
-- the snapshot fallback renders when fetch fails;
-- answers containing `<script>` / `<img onerror>` render as literal text;
-- the risk register sorts by severity;
-- filters narrow the case list correctly;
-- optional Playwright smoke against `vite preview`, if approved.
+### 9.2 Tests
 
-Done-check:
-- The Vercel production URL loads.
+- Component tests per screen (Vitest + Testing Library), using `snapshot.json` as fixture data. Each one checks the
+  mockup's copy and structure: three input tiles, three version cards, eight failure-mode rows, six audit tabs, five
+  wizard steps, four filter chips.
+- Numbers on the dashboard and audit report equal the API/snapshot values (no frontend arithmetic beyond formatting).
+- The API client handles timeout, 404 and cold start; the snapshot fallback renders when fetch fails.
+- Bot answers and evidence containing `<script>` / `<img onerror>` render as literal text. A lint rule bans
+  `dangerouslySetInnerHTML`.
+- The risk register sorts by severity and the Severity/OWASP filters narrow it; case filters, search and the Check
+  dropdown narrow the list; tab and case selection round-trip through the URL.
+- Public mode hides or disables every admin control. "Start audit" stays disabled without an input and the permission tick.
+- API (pytest): new fields match `build_context` / audit files; `--admin` refuses to start when hosted and binds
+  to loopback only; admin routes return 401 without the token and 403 on Render; `/api/playground` on the hosted API
+  rejects free text; `/api/estimate` returns `$0` offline.
+- Optional Playwright smoke against the static `out/` build, if approved.
+
+### 9.3 Done-check
+
+- The Vercel production URL loads. All five mockup screens are reachable and match the mockups in layout, copy and colours.
 - Every Phase 7 report section is reachable.
-- Overview numbers match `docs/report.html`.
-- With the API asleep, the snapshot still renders.
+- Dashboard numbers match `docs/report.html` and `evalpilot verdict`.
+- With the API asleep, the snapshot still renders with a "snapshot" badge.
 - The browser console shows no CSP violations.
-- Lighthouse accessibility ≥ 90.
+- Lighthouse accessibility ≥ 90 on Home, Dashboard and the audit report.
+- Admin mode, run locally, completes a URL audit of `examples/vulnerable_bot` → BLOCK. Total paid spend stays
+  under `budget_usd`.
 
-Cost: $0 (Vercel Hobby; static build, no serverless functions or secrets).
+Cost: $0 hosted (Vercel Hobby static export; Render offline). Admin-mode paid audits and playground questions go
+through the existing budget guard and are counted in the spend ledger.
+
+Phase 9 status (as built):
+- [x] 9.1–9.12: Next.js 16 App Router static export + Tailwind v4, five mockup screens plus compare / calibration /
+  playground / admin, API additions (`version_summaries`, audit stats/guardrails/`found_by`, `/api/estimate`,
+  playground, `serve --admin`, connection test, card draft, labels, rerun).
+- [x] Snapshot command `evalpilot snapshot` (14 responses). Contract test against `lib/types.ts` instead of
+  `openapi-typescript`. Source-scan test instead of ESLint.
+- [x] CSP hashes in each exported HTML page; `vercel.json` holds the static headers only.
+- [x] CI: root workflow and `render.yaml` point at `phase-9/`; `web` job (typecheck, vitest, build); snapshot
+  freshness check.
+- [ ] Vercel project (Root Directory `phase-9/web`, `NEXT_PUBLIC_API_BASE_URL` = Render URL). Set Render
+  `EVALPILOT_ALLOWED_ORIGINS` to that URL and `http://localhost:3000`.
 
 ---
 
@@ -544,7 +655,8 @@ Rules: check `evalpilot spend` before each paid step; debug single cases with `-
 | Diff, gate, exit codes | 6 | yes |
 | Report, PDF, final verdict | 7 | yes |
 | API endpoints, CORS, modes, upload caps, never-executes, no-key startup guard | 8 | yes |
-| Frontend components, API client, snapshot fallback, XSS-as-text, build | 9 | yes |
+| Frontend screens (mockup structure), API client, snapshot fallback, XSS-as-text, public-vs-admin gating, `next build` + CSP hashes | 9 | yes |
+| API additions for the screens, `serve --admin` guards | 9 | yes |
 | Deployed `/health` and Vercel URL smoke | 8 / 9 | no (manual after deploy) |
 | Paid live smoke / paid audit | 2 / 4B | no (`EVALPILOT_LIVE=1`) |
 
@@ -572,9 +684,12 @@ Rules: check `evalpilot spend` before each paid step; debug single cases with `-
 | Public upload endpoint abused | `readonly` default; `jobs` mode opt-in; size/count caps; per-IP rate limit; one job at a time |
 | SSRF via URL probing from the host | URL targets disabled on the hosted API |
 | Stored XSS from bot answers in the web app | text-only rendering; CSP; component test with payloads |
-| Frontend/backend schema drift | types generated from `/openapi.json`; CI typecheck |
+| Frontend/backend schema drift | `lib/types.ts` type-checked against `evalpilot snapshot` in CI |
 | CORS misconfiguration | explicit origin allowlist; test for a rejected origin |
 | Vercel Hobby is for non-commercial use | portfolio/demo use only; note in README |
+| Mockup features need a key or URL probing (live audits, AI review, playground free text, labelling) | admin mode only, on the owner's machine (`serve --admin`, loopback, per-process token, refused when hosted); public UI disables them with a reason |
+| Next.js static export needs inline scripts, which weakens CSP | per-page CSP meta with sha256 hashes; `vercel.json` for frame-ancestors; no `'unsafe-inline'` / `'unsafe-eval'` for scripts |
+| UI drifts from the mockups | mockups committed in `Docs/mockups/`; component tests assert copy and structure; tokens in one `@theme` block |
 
 ---
 
@@ -589,6 +704,6 @@ Rules: check `evalpilot spend` before each paid step; debug single cases with `-
 - [ ] **M6** Phase 6 — gate blocks v1, passes v3; CI audits both examples offline
 - [ ] **M7** Phase 7 — HTML report on GitHub Pages, audit Markdown + PDF, final verdict, README DoD table, spend < $5
 - [ ] **M8** Phase 8 — FastAPI backend live on Render (`/health` green, verdict matches CLI, offline-only)
-- [ ] **M9** Phase 9 — frontend live on Vercel against the Render API, snapshot fallback, CSP clean
+- [ ] **M9** Phase 9 — Next.js + Tailwind frontend matching `Docs/mockups/`, live on Vercel against the Render API, snapshot fallback, CSP clean, admin mode local-only
 
 Next: Phase 4A, task 4A.4.1.

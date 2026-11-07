@@ -14,7 +14,7 @@ This document turns the problem statement into a **phased system architecture**.
 | 6 | Run compare and release gate | built (`phase-6/`); CI not yet run on GitHub |
 | 7 | HTML report, audit export (Markdown + PDF), final ship/block verdict, definition of done | built (`phase-7/`); final verdict v3 BLOCK pending owner labels; Pages not yet enabled |
 | 8 | Backend API (FastAPI) deployed on **Render** | built (`phase-8/`); not yet deployed |
-| 9 | Frontend web app deployed on **Vercel**, talking to the Render API | planned |
+| 9 | Frontend web app (**Next.js + Tailwind**, screens in `Docs/mockups/`) deployed on **Vercel**, talking to the Render API | planned |
 
 ---
 
@@ -316,41 +316,60 @@ Render URL; `GET /api/verdict?version=v3` on Render returns the same JSON as `ev
 
 ---
 
-## Phase 9 — Frontend on Vercel
+## Phase 9 — Frontend on Vercel (Next.js + Tailwind)
 
-**Goal:** an interactive web version of the Phase 7 report for PMs and reviewers, backed by the Phase 8 API and
-deployed as a static site on Vercel.
+**Goal:** a product-style web app for PMs, reviewers and bot owners that answers "is this bot safe to ship?". It
+covers the eval results (dashboard, cases, compare, calibration) and the audit (risk register, guardrail coverage,
+new-audit wizard). It is built with **Next.js (App Router, static export) and Tailwind CSS**, deployed on Vercel and
+backed by the Phase 8 API. The look is fixed by the five mockups in `Docs/mockups/`. Their names and numbers are
+placeholders; real values come from the API.
 
 ```text
-Browser ──► Vercel (static build, CDN) ──fetch──► Render API (Phase 8)
-                     │
-                     └─ snapshot.json (reference context exported at build time) ─► fallback when the API is asleep/down
+                 public                                               admin (owner's machine only)
+Browser ──► Vercel CDN (Next.js static export)              Browser ──► next dev (localhost)
+              │  HTML/JS/CSS, snapshot.json                               │
+              └─fetch──► Render API (Phase 8, readonly,                   └─fetch + Bearer token──► evalpilot serve --admin
+                          no key, offline)                                    (127.0.0.1, .env key, spend ledger,
+              └─ snapshot.json fallback when the API is asleep/down            budget guard, --authorized URL probing)
 ```
 
-| View | Contents |
-|---|---|
-| Overview | final verdict banner (gate AND audit), spend vs budget, gate per version with violation lines |
-| Pass rates | 8 graders × 3 versions matrix with `n/a`, thresholds from `[gate]` |
-| Compare | fixed / regressed case ids per grader for v1→v2 and v2→v3 |
-| Calibration | TPR, TNR, accuracy, κ per judge; "pending labels" state |
-| Case explorer | filter by category, version, failing grader, text; answer + retrieved docs + grade evidence |
-| Audits | list (vulnerable BLOCK, fixed SHIP, own bot); risk register sortable by severity; coverage heatmap; evidence drill-down; Markdown/PDF download |
-| Run an audit | upload traces / system card / zip → job status → result (only when the API runs in `jobs` mode) |
+| Screen (mockup) | Route | Contents |
+|---|---|---|
+| Home (`1-home.png`) | `/` | dark hero "Is your AI chatbot safe to ship?" with the OWASP Top 10 for LLM Apps 2026 badge; input card with Bot URL / System card JSON / GitHub repo tiles, endpoint field, permission checkbox, input count + cost estimate, "Start audit"; 3-step explainer; demo-audit and playground cards; admin recent-audit card |
+| Dashboard (`2-dashboard.png`) | `/dashboard` | per-version cards (passed / 41, critical failures, regressions, gate badge); pass rate by failure mode as paired v1/v3 bars for all 8 graders; open risks, judges trusted, OpenAI spend vs cap; recent runs table; export report and case study links |
+| Audit report (`3-audit-report.png`) | `/audits/view?id=` | verdict headline; stat cards (verdict, quality, security tests passed, code findings); tabs Overview · Evals · Security · Code · Risks · Guardrails; risk register with severity/OWASP filters and expandable evidence, score and fix; guardrail coverage Present / Weak / Missing |
+| New audit wizard (`4-new-audit-wizard.png`) | `/audits/new` | 5 steps Name → Inputs → Engines → Permission → Run; bot URL with request template, answer path and connection test; system card paste/upload/draft with live validation; GitHub repo or zip (read only, never run); cost estimate vs remaining cap; live job progress |
+| Case explorer (`5-case-explorer.png`) | `/cases?run=&case=` | search, All / Failed / Passed / Critical chips, failing-check filter; list + detail with question, answer, checks with evidence, retrieved documents (untrusted ones flagged); label, compare with v3, copy link |
+| Audits, Compare, Calibration, Playground, Admin | `/audits`, `/compare`, `/calibration`, `/playground`, `/admin` | same components: audit list; fixed/regressed ids per grader; TPR/TNR/accuracy/κ per judge with "needs N more labels"; one question to two versions side by side; how to start admin mode |
 
 | Component | Responsibility |
 |---|---|
-| `web/` | frontend app (framework to confirm before Phase 9), TypeScript |
-| `web/src/api.ts` | typed client; base URL from `VITE_API_BASE_URL` (public, not a secret); timeouts, cold-start retry |
-| `web/src/types.ts` | types generated from the API's OpenAPI schema, so frontend and backend can't drift silently |
-| `web/public/snapshot.json` | `report.build_context` output for `runs/reference/`, produced offline at build time |
-| `vercel.json` | SPA rewrites, security headers (CSP `default-src 'self'` + the Render origin in `connect-src`) |
+| `web/app/` | one route folder per screen; client components fetch from the API (no server-side data fetching) |
+| `web/components/ui/` | UI kit from the mockups: Badge, Card, StatCard, Button, Tabs, Stepper, PairedBar, Table, Chip, ApiStatus |
+| `web/app/globals.css` | Tailwind v4 `@theme` tokens: ink nav/hero, light grey page, white cards, dark-green brand, pass/fail/warn/muted badge colours; Space Grotesk headings, Inter body |
+| `web/lib/api.ts` | typed client; base URL from `NEXT_PUBLIC_API_BASE_URL` (public, not a secret); timeouts, cold-start retry, admin bearer token |
+| `web/lib/types.ts` | hand-written API types; `test/contract.test.ts` type-checks them against `public/snapshot.json` |
+| `web/lib/labels.ts` | plain-language names for grader ids, versions, gate and coverage states |
+| `web/public/snapshot.json` | `evalpilot snapshot`: read-only API responses for `runs/reference/`, keyed by request path |
+| `web/vercel.json` + `scripts/csp-hashes.mjs` | static security headers; per-page CSP meta with hashed inline scripts and the API origin in `connect-src` |
+| API additions (`src/evalpilot/api/`) | the fields and routes the screens need: per-version pass/critical/regression counts, audit stat cards and guardrail states, cost estimate, job progress, playground; admin-only connection test, system-card draft, URL/repo audits, labels |
+
+**Public vs admin.** The public site (Vercel → Render) is read-only and keyless. It shows every result and lets
+visitors explore the demo audit and the reference playground answers. Live bot-URL audits, GitHub repo fetches, AI
+review, paid playground answers, labelling and re-runs need the OpenAI key, the spend ledger or URL probing, so they
+only exist in admin mode. Admin mode means the local frontend talking to `evalpilot serve --admin` on `127.0.0.1`. It
+refuses to start when hosted and prints a per-process token. The public UI keeps these controls visible where the
+mockups show them, disabled with a one-line reason.
 
 **Security rules:** bot answers and audit excerpts contain live XSS payloads from `vulnerable_bot`, so they render as
-text only (no raw-HTML injection anywhere); no secrets in the frontend bundle; the only network origin is the Render API.
+text only. `dangerouslySetInnerHTML` is banned by a Vitest source scan (ESLint was not an approved dependency). There
+are no secrets in the bundle; `NEXT_PUBLIC_*` values are public by design. The only network origin is the configured
+API. The CSP has no `'unsafe-inline'` or `'unsafe-eval'` for scripts.
 
-**Exit criteria:** frontend tests (unit + component) pass in CI; Vercel production build succeeds; every Phase 7 report
-section is reachable; the site still shows the reference results with the API asleep (snapshot fallback); a Lighthouse
-accessibility score ≥ 90.
+**Exit criteria:** frontend tests (Vitest + Testing Library) pass in CI along with the Python API tests; the Next.js
+static build and CSP hash step succeed; the Vercel production site matches the five mockups and reaches every Phase 7
+report section; the site still shows the reference results with the API asleep (snapshot fallback); Lighthouse
+accessibility ≥ 90; admin mode works locally and stays impossible on the hosted stack.
 
 ---
 
@@ -370,6 +389,7 @@ accessibility score ≥ 90.
 | `compare`, `gate` | 6 | read-only; exit code |
 | `report`, `audit-report --format pdf`, `verdict` | 7 | writes HTML / PDF / final verdict JSON |
 | `serve` | 8 | runs the API locally (`uvicorn`); same app Render starts |
+| `serve --admin`, `snapshot` | 9 | admin API on 127.0.0.1 with the owner's key and budget guard (refused when hosted) / read-only API dump for the frontend fallback |
 
 ### Data flow
 
@@ -419,6 +439,7 @@ Phases 5 and 6 can overlap once Phase 4 exists. Phase 7 is the last evaluation p
 - Executing, building or dynamically testing target source code.
 - Probing systems the user isn't authorized to test; load or denial-of-service testing.
 - Paid OpenAI calls from the hosted backend (Render runs offline only; paid runs stay on the owner's machine).
-- User accounts / login (the hosted API is read-only by default; uploads are rate-limited and temporary).
+- User accounts / login (the hosted API is read-only by default; uploads are rate-limited and temporary). The Phase 9
+  "Admin sign in" is a per-process token for the owner's local `evalpilot serve --admin`, not an account system.
 - Paid hosting tiers (Render free web service and Vercel Hobby only).
 - Real customer data (corpus and example bots are fictional).

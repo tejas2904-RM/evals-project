@@ -1,6 +1,6 @@
 name: ci
 
-# The repo holds every phase; CI, Render (render.yaml rootDir) and Pages use the latest, phase-8/.
+# The repo holds every phase; CI, Render (render.yaml rootDir) and Pages use the latest, phase-9/.
 
 on:
   push:
@@ -15,7 +15,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: phase-8
+        working-directory: phase-9
     env:
       EVALPILOT_BOT_MODEL: gpt-5.4-nano
       EVALPILOT_JUDGE_MODEL: gpt-5.4-mini
@@ -115,25 +115,50 @@ jobs:
           code=$(curl -s -o /dev/null -w '%{http_code}' -F "traces=@runs/reference/20261106T143944Z-v1-v2-v3/traces.jsonl" http://127.0.0.1:8800/api/audits)
           if [ "$code" -ne 403 ]; then echo "readonly API accepted an upload ($code)"; exit 1; fi
 
+      - name: Frontend snapshot is current
+        run: |
+          evalpilot snapshot --out web/public/snapshot.check.json
+          python -c "from pathlib import Path; import sys; a=Path('web/public/snapshot.json').read_bytes(); b=Path('web/public/snapshot.check.json').read_bytes(); sys.exit(0 if a==b else 1)" || { echo "web/public/snapshot.json is stale: run 'evalpilot snapshot' and commit"; exit 1; }
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: eval-artifacts
           path: |
-            phase-8/runs/*/gate_*.json
-            phase-8/runs/*/compare_*.json
-            phase-8/runs/audit-*/audit.md
-            phase-8/runs/audit-*/audit.pdf
-            phase-8/runs/audit-*/verdict.json
-            phase-8/runs/reference/*/verdict_*.json
-            phase-8/docs/report.html
-            phase-8/api.log
+            phase-9/runs/*/gate_*.json
+            phase-9/runs/*/compare_*.json
+            phase-9/runs/audit-*/audit.md
+            phase-9/runs/audit-*/audit.pdf
+            phase-9/runs/audit-*/verdict.json
+            phase-9/runs/reference/*/verdict_*.json
+            phase-9/docs/report.html
+            phase-9/api.log
           if-no-files-found: warn
 
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: phase-9/web
+    env:
+      NEXT_PUBLIC_API_BASE_URL: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: phase-9/web/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
   pages:
-    # Publishes phase-8/docs (report.html, rebuilt and checked above). Enable once: Settings -> Pages -> Source: GitHub Actions.
+    # Publishes phase-9/docs (report.html, rebuilt and checked above). Enable once: Settings -> Pages -> Source: GitHub Actions.
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: evals
+    needs: [evals, web]
     runs-on: ubuntu-latest
     permissions:
       pages: write
@@ -146,6 +171,6 @@ jobs:
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: phase-8/docs
+          path: phase-9/docs
       - id: deploy
         uses: actions/deploy-pages@v4

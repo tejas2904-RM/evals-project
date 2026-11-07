@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* Design tokens from Docs/mockups/. Every colour on screen comes from this block. */
+@theme {
+  --color-ink: #111214;
+  --color-ink-soft: #1c1e21;
+  --color-page: #e8ebee;
+  --color-surface: #f8f9fa;
+  --color-line: #d9dde1;
+  --color-text: #15171a;
+  --color-muted: #5d646c;
+  --color-faint: #9aa1a9;
+  --color-brand: #0c3b2a;
+  --color-brand-hover: #14503a;
+  --color-brand-soft: #e3f1e8;
+  --color-brand-line: #2f6b4f;
+  --color-pass: #1e6b3a;
+  --color-pass-soft: #dcf3e3;
+  --color-fail: #b42318;
+  --color-fail-soft: #fde2e2;
+  --color-warn: #8a6100;
+  --color-warn-soft: #fdf0c4;
+  --color-neutral-soft: #e9ecef;
+
+  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  --radius-card: 12px;
+  --radius-hero: 20px;
+}
+
+@layer base {
+  html {
+    background: var(--color-page);
+    color: var(--color-text);
+  }
+  body {
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-line);
+    outline-offset: 2px;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
