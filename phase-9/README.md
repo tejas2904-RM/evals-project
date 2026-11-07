@@ -150,7 +150,7 @@ free-text playground questions and re-runs need the owner's machine:
 
 1. New project → this repo. **Root Directory:** `phase-9/web`.
 2. Env (Production and Preview): `NEXT_PUBLIC_API_BASE_URL` = the Render URL (no trailing slash).
-3. Framework: Next.js. The build is `npm run build` (`next build` + CSP hashes). Output directory `out/`.
+3. Framework Preset: **Other** (not Next.js). The app is a static export: `npm run build` writes CSP-hashed HTML to `out/`. `vercel.json` sets `framework` to `null` so Vercel does not look for `routes-manifest.json`.
 4. Enable GitHub Pages (Settings → Pages → Source: GitHub Actions) for the Phase 7 HTML report.
 
 `evalpilot snapshot` rewrites `web/public/snapshot.json` from the read-only API (offline, no key). CI fails if that
