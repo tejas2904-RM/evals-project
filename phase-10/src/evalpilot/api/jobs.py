@@ -7,6 +7,7 @@ and re-runs, all under the normal budget guard.
 
 from __future__ import annotations
 
+import json
 import queue
 import shutil
 import threading
@@ -69,6 +70,23 @@ class Job:
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
 
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Job":
+        progress = data.get("progress") if isinstance(data.get("progress"), dict) else {}
+        notes = data.get("notes") if isinstance(data.get("notes"), list) else [HOSTED_NOTE]
+        return cls(
+            job_id=str(data["job_id"]),
+            name=str(data.get("name") or ""),
+            status=str(data.get("status") or "queued"),
+            created=str(data.get("created") or ""),
+            finished=str(data["finished"]) if data.get("finished") else None,
+            audit_id=str(data["audit_id"]) if data.get("audit_id") else None,
+            decision=str(data["decision"]) if data.get("decision") else None,
+            error=str(data["error"]) if data.get("error") else None,
+            progress={e: str(progress.get(e, "queued")) for e in ENGINES},
+            notes=[str(n) for n in notes],
+        )
+
 
 Runner = Callable[[Upload], tuple[str, str]]
 
@@ -129,23 +147,60 @@ def _prune(out_dir: Path) -> None:
 
 class JobQueue:
     def __init__(self, runner: Runner, *, max_queued: int, max_kept: int, inline: bool = False,
-                 note: str = HOSTED_NOTE) -> None:
+                 note: str = HOSTED_NOTE, store: Path | None = None) -> None:
         self.runner = runner
         self.max_kept = max_kept
         self.inline = inline
         self.note = note
+        self.store = store
+        if store is not None:
+            store.mkdir(parents=True, exist_ok=True)
         self.jobs: dict[str, Job] = {}
         self._queue: queue.Queue[tuple[Job, Upload]] = queue.Queue(maxsize=max_queued)
         self._lock = threading.Lock()
         self._worker: threading.Thread | None = None
 
+    def _save(self, job: Job) -> None:
+        if self.store is None:
+            return
+        path = self.store / f"{job.job_id}.json"
+        path.write_text(json.dumps(job.to_dict()), encoding="utf-8")
+
+    def _load(self, job_id: str) -> Job | None:
+        if self.store is None or not job_id.isalnum() or len(job_id) > 32:
+            return None
+        path = self.store / f"{job_id}.json"
+        if not path.is_file():
+            return None
+        try:
+            job = Job.from_dict(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+            return None
+        if job.status in ("queued", "running"):
+            job.status = "failed"
+            job.error = "the API restarted before this audit finished; start it again"
+            job.finished = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            for engine, state in job.progress.items():
+                if state in ("queued", "running"):
+                    job.progress[engine] = "failed" if state == "running" else "skipped"
+            self._save(job)
+        with self._lock:
+            self.jobs.setdefault(job.job_id, job)
+        return job
+
     def submit(self, upload: Upload, *, name: str = "") -> Job:
         job = Job(job_id=uuid.uuid4().hex[:16], name=name[:80], notes=[self.note])
-        upload.on_progress = lambda engine, state: job.progress.__setitem__(engine, state)
+
+        def on_progress(engine: str, state: str) -> None:
+            job.progress[engine] = state
+            self._save(job)
+
+        upload.on_progress = on_progress
         with self._lock:
             self.jobs[job.job_id] = job
             for old in list(self.jobs)[: max(0, len(self.jobs) - self.max_kept)]:
                 del self.jobs[old]
+        self._save(job)
         if self.inline:
             self._execute(job, upload)
             return job
@@ -154,6 +209,8 @@ class JobQueue:
         except queue.Full:
             with self._lock:
                 self.jobs.pop(job.job_id, None)
+            if self.store is not None:
+                (self.store / f"{job.job_id}.json").unlink(missing_ok=True)
             if not upload.keep_workdir:
                 shutil.rmtree(upload.workdir, ignore_errors=True)
             raise QueueFull("audit queue is full; try again in a minute") from None
@@ -162,7 +219,8 @@ class JobQueue:
 
     def get(self, job_id: str) -> Job | None:
         with self._lock:
-            return self.jobs.get(job_id)
+            found = self.jobs.get(job_id)
+        return found or self._load(job_id)
 
     def _ensure_worker(self) -> None:
         with self._lock:
@@ -180,6 +238,7 @@ class JobQueue:
 
     def _execute(self, job: Job, upload: Upload) -> None:
         job.status = "running"
+        self._save(job)
         try:
             job.audit_id, job.decision = self.runner(upload)
             job.status = "done"
@@ -199,5 +258,6 @@ class JobQueue:
                     job.progress[engine] = "failed" if state == "running" else "skipped"
         finally:
             job.finished = datetime.now(timezone.utc).isoformat(timespec="seconds")
+            self._save(job)
             if not upload.keep_workdir:
                 shutil.rmtree(upload.workdir, ignore_errors=True)

@@ -445,10 +445,12 @@ function RunStep({ jobId }: { jobId: string | null }) {
     if (!jobId) return;
     let stop = false;
     let timer: ReturnType<typeof setTimeout>;
+    let misses = 0;
     const poll = async () => {
       try {
         const j = await apiGet<Job>(`/api/jobs/${encodeURIComponent(jobId)}`, 45_000);
         if (stop) return;
+        misses = 0;
         setError(null);
         setWaiting(false);
         setJob(j);
@@ -464,7 +466,19 @@ function RunStep({ jobId }: { jobId: string | null }) {
           timer = setTimeout(poll, 3_000);
           return;
         }
-        setError(err instanceof ApiError ? err.message : String(err));
+        if (err instanceof ApiError && err.status === 404 && misses < 4) {
+          misses += 1;
+          setWaiting(true);
+          timer = setTimeout(poll, 2_000);
+          return;
+        }
+        setError(
+          err instanceof ApiError && err.status === 404
+            ? "This run is gone. The API restarted (Render sleep or deploy). Open the audit list — if it finished, the report is there."
+            : err instanceof ApiError
+              ? err.message
+              : String(err),
+        );
         return;
       }
       timer = setTimeout(poll, POLL_MS);
@@ -477,7 +491,18 @@ function RunStep({ jobId }: { jobId: string | null }) {
   }, [jobId]);
 
   if (!jobId) return <Card className="p-5 text-sm text-muted">No audit is running. Start one from step 1.</Card>;
-  if (error) return <Card className="p-5 text-sm text-fail" role="alert">{error}</Card>;
+  if (error) {
+    return (
+      <Card className="flex flex-col gap-3 p-5">
+        <p role="alert" className="text-sm text-fail">
+          {error}
+        </p>
+        <ButtonLink href="/audits/" variant="primary">
+          Open the audit list
+        </ButtonLink>
+      </Card>
+    );
+  }
   return (
     <Card className="flex flex-col gap-4 p-5" aria-live="polite">
       <div className="flex items-center justify-between">

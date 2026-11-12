@@ -125,3 +125,16 @@ def test_jobs_draft_from_repo_is_not_403(jobs_api, monkeypatch):
     r = jobs_api.post("/api/system-card/draft", data={"repo": "https://github.com/x/y"})
     assert r.status_code == 400
     assert "download stub" in r.json()["detail"]
+
+
+def test_job_record_survives_an_api_restart(ref_runs, root):
+    first = client(root, mode="jobs")
+    r = first.post("/api/audits", data={"system_card_json": CARD, "engines": "config", "name": "persist"})
+    assert r.status_code == 202, r.text
+    job_id = r.json()["job_id"]
+    assert r.json()["status"] == "done"
+    second = client(root, mode="jobs")
+    found = second.get(f"/api/jobs/{job_id}")
+    assert found.status_code == 200, found.text
+    body = found.json()
+    assert body["job_id"] == job_id and body["status"] == "done" and body["name"] == "persist"

@@ -108,7 +108,8 @@ def create_app(settings: Settings | None = None, api: ApiSettings | None = None,
     else:
         runner = offline_runner(settings, repo.uploads)
         note, ledger_path = HOSTED_NOTE, repo.reference / "spend.jsonl"
-    jobs = JobQueue(runner, max_queued=api.max_queued_jobs, max_kept=api.max_kept_jobs, inline=inline_jobs, note=note)
+    jobs = JobQueue(runner, max_queued=api.max_queued_jobs, max_kept=api.max_kept_jobs, inline=inline_jobs, note=note,
+                    store=(settings.runs_dir if api.admin else repo.uploads) / "jobs")
     limiter = RateLimiter(api.post_per_minute)
     play_limiter = RateLimiter(60)
     spend_ledger = Ledger(ledger_path)
