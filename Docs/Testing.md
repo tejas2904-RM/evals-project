@@ -150,6 +150,18 @@ The committed paid run is re-gated and must match its recorded `gate_v1..v3.json
 
 Single HTML file with no remote assets; contains gate verdict, audit verdict, spend, κ for both judges, risk register and coverage map; builds from `runs/reference/` offline; PDF produced and non-empty with the same section headings as `audit.md`; final verdict truth table (gate × audit → SHIP only when both pass).
 
+### Phase 8 — API
+
+Readonly POST 403; jobs upload caps and never-executes; CORS allowlist; hosted `readonly` refuses a paid key; `/api/verdict` matches the CLI.
+
+### Phase 9 — frontend
+
+Vitest screen tests against `snapshot.json`; XSS as text; public mode disables live URL/repo; `next build` + CSP hashes; `serve --admin` refused when hosted.
+
+### Phase 10 — public hosted audits
+
+Hosted `jobs` starts with a dummy key; hosted `readonly` + key still refuses; public POST URL/repo 202 in jobs mode (stub HTTP); loopback/metadata URL 400; GitHub-only repo URLs; frontend Start audit enabled when `jobs_enabled`; CI still has no `OPENAI_API_KEY`.
+
 ### Integration (offline)
 
 ```text
@@ -240,4 +252,4 @@ EVALPILOT_LIVE=1 pytest -m live          # paid smoke tests (cents)
 - Whether the bot's answers are *good* → `Docs/Evals.md`.
 - Whether judges agree with humans → calibration report (only the math is unit-tested).
 - Real OpenAI behaviour at scale → one-off paid runs/audits committed to `runs/reference/`.
-- Third-party targets → audits of systems you own, run manually with `--authorized`.
+- Third-party targets → audits of systems you own, run with `--authorized` (CLI or the Phase 10 public form).

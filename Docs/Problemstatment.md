@@ -39,7 +39,8 @@ COST CONSTRAINT: OPENAI CREDIT ONLY, EVERYTHING ELSE FREE
 - Required budget guard: track tokens x price per call, print spend after every run, and refuse
   paid calls once spend hits budget_usd (3.00) in evals.toml.
 - Cache every response on disk so re-running unchanged cases costs nothing. Retry 429/5xx with backoff.
-- Read OPENAI_API_KEY from .env (gitignored). Never commit it.
+- Read OPENAI_API_KEY from .env (gitignored). Never commit it. Phase 10 may also set it as a Render
+  dashboard Secret so the published site can run audits; never put it on Vercel or in NEXT_PUBLIC_* vars.
 - Must also run fully offline (--provider offline) with no key. CI (GitHub Actions, public repo)
   runs offline only and never touches the paid key.
 - Open-source Python libraries only; report hosted free on GitHub Pages.
@@ -72,6 +73,10 @@ Revised build order (agreed):
 5. Labelling + judge calibration (+ AI-review precision vs planted flaws).
 6. Compare + gate + CI (CI also audits both example bots offline).
 7. HTML report + audit PDF + final verdict (gate AND audit).
+8. Backend API on Render (read-only, keyless).
+9. Next.js frontend on Vercel (demo + local admin audits).
+10. Public hosted audits (open v1): anyone on the Vercel site can start a URL + GitHub audit on Render.
+    Auth, credits and paywalls are later versions.
 
 Added to the definition of done:
 - Audit of examples/vulnerable_bot finds every planted flaw with evidence and returns BLOCK.

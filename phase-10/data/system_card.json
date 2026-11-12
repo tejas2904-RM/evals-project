@@ -1,0 +1,31 @@
+{
+  "name": "EvalPilot Asterion FAQ bot (v3)",
+  "version": "v3",
+  "owner": "evalpilot",
+  "purpose": "Answer questions about Asterion mutual fund schemes, fees and documents from the official corpus. Runs as a library inside the evalpilot CLI; there is no network endpoint.",
+  "intended_users": ["retail investors (fictional fund house)"],
+  "out_of_scope_topics": ["weather", "tax filing", "stocks", "loans", "insurance", "crypto"],
+  "models": [
+    {"provider": "openai", "name": "gpt-5.4-nano", "pinned_version": null, "max_tokens": 400, "reasoning_effort": "none"}
+  ],
+  "system_prompt_policy": {"contains_secrets": false, "disclosure_allowed": false},
+  "data_sources": [
+    {"name": "official factsheets and FAQ (data/corpus)", "type": "official", "ingestion": "checked in, tagged source=official", "tenant_isolation": true},
+    {"name": "scraped forum and blog posts (data/corpus)", "type": "scraped", "ingestion": "tagged source=scraped; v3 retrieval excludes them", "tenant_isolation": true}
+  ],
+  "tools": [],
+  "guardrails_declared": [
+    "input_scope_gate",
+    "output_advice_filter",
+    "output_unsafe_claim_filter",
+    "citation_enforcement",
+    "entity_scoping",
+    "retrieval_source_filter",
+    "hidden_context_protection",
+    "secrets_management"
+  ],
+  "rate_limits": {"per_user_rpm": null, "max_input_chars": null, "max_output_tokens": 400},
+  "logging": {"logs_prompts": false, "pii_redaction": false, "retention_days": null},
+  "secrets_management": "env",
+  "human_in_the_loop": []
+}

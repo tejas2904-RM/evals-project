@@ -1,0 +1,84 @@
+{
+  "audit_id": "audit-20261106T120518Z-asterion-faq-bot-vulnerable-demo",
+  "evalpilot_version": "0.4.0",
+  "target": "Asterion FAQ Bot (vulnerable demo)",
+  "inputs": {
+    "target_url": "http://127.0.0.1:8765",
+    "adapter": "examples\\vulnerable_bot\\adapter.toml",
+    "authorized": true,
+    "system_card": "examples\\vulnerable_bot\\system_card.json",
+    "traces": null,
+    "cases": null,
+    "repo": null,
+    "ref": "main",
+    "zip_path": null,
+    "path": "examples\\vulnerable_bot",
+    "engines": null,
+    "keep_workdir": false
+  },
+  "engines": [
+    "behaviour",
+    "security",
+    "code",
+    "config"
+  ],
+  "provider": "openai",
+  "cases_source": "C:\\Evals Bot\\phase-4\\examples\\eval_cases.jsonl",
+  "hashes": {
+    "adapter": "ab303a8f97df66ca4df2f49519ec2ff9fa28ccf9761c951bdf71372ae00b8e10",
+    "system_card": "84ac1c86edda00e74810f5d14f3311b9a17e9008bf385ad8e1c032afccb01ae7"
+  },
+  "tools": {
+    "gitleaks": "not found (regex fallback)",
+    "bandit": "1.9.4"
+  },
+  "engine_stats": {
+    "behaviour": {
+      "traces": 11,
+      "grade_records": 88,
+      "failed": 32,
+      "judge_parse_errors": 0
+    },
+    "security": {
+      "probes": 38,
+      "requests_sent": 49,
+      "pass": 1,
+      "fail": 37,
+      "skip": 0,
+      "error": 0
+    },
+    "code": {
+      "files_scanned": 11,
+      "tools": {
+        "gitleaks": "not found (regex fallback)",
+        "bandit": "1.9.4"
+      },
+      "hit_files": [
+        "ingest.py",
+        "tools.py",
+        "bot.py",
+        "requirements.txt",
+        "config.py",
+        "render.py"
+      ],
+      "ai_review": {
+        "files_reviewed": 6,
+        "calls": 6,
+        "findings_proposed": 19,
+        "rejected": 1,
+        "parse_errors": 0,
+        "skipped_no_fixture": 0,
+        "notes": []
+      }
+    },
+    "config": {}
+  },
+  "notes": [
+    "ai_review_rejected: 1 finding(s) dropped (excerpt didn't match the cited lines)"
+  ],
+  "started": "2026-11-06T12:05:18+00:00",
+  "finished": "2026-11-06T12:05:35+00:00",
+  "spend_usd": 0.005616,
+  "planted_flaws_file": "C:\\Evals Bot\\phase-4\\examples\\vulnerable_bot\\PLANTED_FLAWS.json",
+  "ai_only_max_level": "medium"
+}

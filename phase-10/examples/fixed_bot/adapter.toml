@@ -1,0 +1,18 @@
+# How EvalPilot talks to this bot. Auth tokens, if any, are read from the env var named here.
+[request]
+method = "POST"
+url_path = "/chat"
+body = '{"message": "{message}", "session_id": "{session_id}"}'
+headers = { "Content-Type" = "application/json" }
+
+[response]
+answer_jsonpath = "$.reply"
+citations_jsonpath = "$.sources"
+context_jsonpath = "$.context"
+
+[limits]
+timeout_s = 10
+rate_per_s = 50          # local demo server; real targets should stay low
+
+[behaviour]
+cases = "../eval_cases.jsonl"

@@ -19,8 +19,9 @@ Rule from the spec: **ask before adding any dependency not listed in §0.3.**
 | 5 Labels + calibration | `phase-5/` | built — 415 tests; paid run regraded with judge prompt v2 ($0.31 total spend); **owner labels pending** (≥ 30 per judge) |
 | 6 Compare + gate | `phase-6/` | built — 454 tests; offline gate v1 BLOCKED / v3 PASS; paid v3 blocked by 1 judge case (adv_05); CI written, not yet run on GitHub ($0.40 total spend) |
 | 7 Report, audit export, final verdict, DoD | `phase-7/` | built — 487 tests; `docs/report.html` from `runs/reference/`; audit PDFs; final verdict v3 **BLOCK** (adv_05 judge case, pending owner labels); Pages + CI not yet run on GitHub ($0.41 total spend) |
-| 8 Backend API on Render | `phase-8/` | built — 531 tests; FastAPI app + `render.yaml` + `evalpilot serve`; readonly + keyless on Render; pushed to GitHub, CI green; Render deploy in progress |
-| 9 Frontend on Vercel (Next.js + Tailwind) | `phase-9/` | planned — screens fixed by `Docs/mockups/` |
+| 8 Backend API on Render | `phase-8/` | built — 531 tests; FastAPI app + `render.yaml` + `evalpilot serve`; readonly + keyless on Render |
+| 9 Frontend on Vercel (Next.js + Tailwind) | `phase-9/` | built — Next.js static export live at https://evals-project.vercel.app/; public site read-only; admin audits local-only |
+| 10 Public hosted audits (open v1) | `phase-10/` | built — anyone on the Vercel site can start a URL + GitHub audit on Render. Auth, credits and paywalls are v2/v3, not this phase |
 
 ---
 
@@ -36,12 +37,12 @@ Rule from the spec: **ask before adding any dependency not listed in §0.3.**
 | GPT-5.x: no `temperature`, `max_completion_tokens`, lowest reasoning effort | `build_request()`; `reasoning_effort = "none"`; unit-tested |
 | One OpenAI-compatible client, `base_url` per provider | provider registry: `openai`, `groq`, `ollama`, `offline` |
 | Cache every response; retry 429/5xx | `llm/cache.py`, `llm/retry.py` |
-| `OPENAI_API_KEY` only from gitignored `.env` | `.gitignore`, `.env.example`, tests never see a key |
+| `OPENAI_API_KEY` never committed | gitignored `.env` on the owner's machine; Render dashboard **Secret** in Phase 10. Never on Vercel. Never `NEXT_PUBLIC_*`. CI has no key |
 | Fully offline mode for evals **and** audits | `--provider offline`; CI has no secrets |
 | Binary checks; no 1–5 scores | graders return `bool`; only the audit risk engine scores (likelihood × impact) |
 | Audit never executes target code | scanners read files only; test asserts no target import/subprocess |
 | Free tools only | Python OSS libraries, gitleaks, bandit; GitHub Pages; Render free web service; Vercel Hobby |
-| Hosted services never spend money | Render API forces `--provider offline` and has no `OPENAI_API_KEY`; Vercel holds no secrets |
+| Hosted spend (Phase 8–9 vs 10) | Phase 8–9: Render is keyless and offline. Phase 10: Render `jobs` mode may hold `OPENAI_API_KEY` and run live audits under `budget_usd`, rate limits and SSRF blocks. Vercel stays a static UI with no secrets |
 
 ### 0.2 Repository layout (target at Phase 7)
 
@@ -618,8 +619,112 @@ Phase 9 status (as built):
 - [x] CSP hashes in each exported HTML page; `vercel.json` holds the static headers only.
 - [x] CI: root workflow and `render.yaml` point at `phase-9/`; `web` job (typecheck, vitest, build); snapshot
   freshness check.
-- [ ] Vercel project (Root Directory `phase-9/web`, `NEXT_PUBLIC_API_BASE_URL` = Render URL). Set Render
+- [x] Vercel production: https://evals-project.vercel.app/ (Root Directory `phase-9/web`). Set Render
   `EVALPILOT_ALLOWED_ORIGINS` to that URL and `http://localhost:3000`.
+
+---
+
+## Phase 10 — Public hosted audits (open v1)
+
+Copy `phase-9/` → `phase-10/`. This phase is **docs-first, then code**. Do not change `phase-1/`…`phase-9/`
+behaviour except for README pointers. CI, root `render.yaml` and the live Vercel Root Directory stay on
+`phase-9/` until Phase 10's done-check passes, then they switch to `phase-10/`.
+
+**Goal:** anyone on the published site can paste a bot URL and/or a public GitHub repo, tick permission, and
+get a real audit. No local `evalpilot serve --admin`. No sign-in. Vercel stays a static UI; Render runs the
+job. Accounts, purchase and subscription tiers are **v2 / v3**, not this phase.
+
+```text
+Visitor ──► Vercel (phase-10/web, static) ──POST /api/audits──► Render (jobs + OPENAI_API_KEY)
+                                              │
+                                              ├─ HTTPS bot URL (permission required; private IPs blocked)
+                                              ├─ public GitHub zip download (no GitHub token)
+                                              ├─ engines: behaviour, security, code, config; optional AI review
+                                              ├─ BudgetGuard (budget_usd); rate limit; one job at a time
+                                              └─ report listed on /audits (ephemeral: gone on Render restart)
+```
+
+Phase 8–9 stay true as history: their hosted APIs are keyless and URL probing is off. Phase 10 **replaces that
+hosting policy** for the live stack.
+
+### 10.0 Decisions
+
+- **Open v1.** No owner token, no accounts. Anyone with the site can start an audit. Later versions add
+  sign-in, credits and paywalls in front of the same `POST /api/audits` path.
+- **Key lives on Render only** (dashboard Secret). Never Vercel, never `NEXT_PUBLIC_*`, never git. CI still
+  has no key and still runs `--provider offline`.
+- **`EVALPILOT_API_MODE=jobs`** on Render. `readonly` remains the default in code and in CI.
+- **Hosted jobs use the live runner** (today's `admin_runner`): URL + repo + optional AI review, provider from
+  env (OpenAI when the key is present). The old hosted runner (offline-only, no URL) stays as the path when no
+  key is set, so local `EVALPILOT_HOSTED=1` tests without a key still work.
+- **Permission checkbox still required** for URL probing (maps to `--authorized`).
+- **SSRF controls** on hosted URL targets: HTTPS only; reject loopback, link-local, private RFC1918, and cloud
+  metadata hosts; existing timeouts and `max_probes`.
+- **Public GitHub only** via `https://github.com/<owner>/<repo>/archive/<ref>.zip`. No GitHub token in v1.
+- **Budget guard stays on.** Open v1 is not unlimited OpenAI. Render's disk is ephemeral, so the ledger resets
+  on restart; that is documented, not a reason to drop the cap.
+- **Labels, free-text playground, re-run of reference audits** stay local-admin for this phase (they write the
+  repo's `data/labels.jsonl` or need a durable ledger). Public visitors start new audits only.
+- **No new dependencies.** Reuse FastAPI, httpx, existing audit engines.
+
+### 10.1 Files this phase changes (all under `phase-10/`)
+
+| Area | Files |
+|---|---|
+| API settings | `src/evalpilot/api/settings.py` — hosted + jobs may start with `OPENAI_API_KEY`; `readonly` + key still refused |
+| Job runner | `src/evalpilot/api/jobs.py` — hosted paid runner when a key is present; else existing offline hosted runner |
+| Routes | `src/evalpilot/api/app.py` — `target_url` and `repo` allowed in `jobs` mode without admin; connection-test allowed with permission tick |
+| SSRF | `src/evalpilot/audit/intake.py` / `adapters.py` — hosted URL allow/deny as in 10.0 |
+| Render | `render.yaml` — `EVALPILOT_API_MODE=jobs`; `OPENAI_API_KEY` `sync: false` (set in dashboard, never in git) |
+| Frontend inputs | `web/lib/draft.ts` — `jobs` mode allows `url`, `card`, `code` |
+| Home + wizard | `web/app/page.tsx`, `web/app/audits/new/page.tsx` — enable URL/repo/Start audit when `jobs_enabled` |
+| Copy | `web/app/admin/page.tsx` — public audits run on the site; local admin is for labels / durable ledger |
+| Tests | `tests/api/test_api.py`, `tests/api/test_phase9.py` (or `test_phase10.py`), `web/test/screens.test.tsx` |
+| Docs in the phase | `README.md` — public flow, Render secrets, ephemeral disk, SSRF, budget |
+
+Root switch **after** the done-check: `.github/workflows/ci.yml`, root `render.yaml`, root `README.md` → `phase-10`.
+Vercel Root Directory → `phase-10/web`.
+
+### 10.2 Tasks
+
+| # | Task | Files |
+|---|---|---|
+| 10.1 | Copy `phase-9/` → `phase-10/` (this docs step). Bump `__version__` to `0.10.0` when code starts | folder |
+| 10.2 | Settings: hosted `jobs` + key allowed; hosted `readonly` + key still refused; admin still refused when hosted | `api/settings.py` |
+| 10.3 | Hosted job runner: if key present, live URL/repo/AI review under budget; else offline engines only | `api/jobs.py` |
+| 10.4 | `POST /api/audits` accepts `target_url` + `repo` in jobs mode; 403 without permission tick on URLs | `api/app.py` |
+| 10.5 | Hosted URL SSRF denylist + HTTPS-only; tests with `127.0.0.1`, `169.254.169.254`, `http://` | `audit/intake.py` or `adapters.py` |
+| 10.6 | Frontend: public Start audit with URL and repo; drop "read-only" copy when `jobs_enabled` | `web/lib/draft.ts`, `web/app/page.tsx`, `web/app/audits/new/page.tsx` |
+| 10.7 | Render: `jobs` mode; document dashboard Secret `OPENAI_API_KEY`; CORS already includes the Vercel URL | `render.yaml`, `README.md` |
+| 10.8 | Tests: public jobs POST with URL/repo (stub HTTP, offline or fake transport); private IP 400; readonly still 403; CI still keyless | `tests/api/`, `web/test/` |
+| 10.9 | After green: point root CI, root `render.yaml` and Vercel Root Directory at `phase-10/` | `.github/workflows/ci.yml`, `render.yaml` |
+
+### 10.3 Tests
+
+- Hosted `jobs` app starts with a dummy `OPENAI_API_KEY`; hosted `readonly` with a key still refuses.
+- `POST /api/audits` with URL + `authorized=true` is 202 in jobs mode (stub target); without the tick, 400.
+- `POST` with `http://127.0.0.1/` or a metadata IP is 400 on hosted.
+- `POST` with a public `repo` is accepted; private-looking or non-GitHub URLs 400.
+- Readonly mode still 403 on POST (CI default).
+- Frontend: three input tiles usable when meta `jobs_enabled`; Start audit enabled after input + permission.
+- Snapshot fallback and XSS-as-text unchanged.
+- CI: no `OPENAI_API_KEY`; pytest `-m "not live"`.
+
+### 10.4 Done-check
+
+- Copy `phase-9/` → `phase-10/` exists; docs describe this phase.
+- On the **phase-10** deploy: Home URL + repo work without Admin sign in; a public GitHub repo audit completes;
+  a live URL audit against a target you own completes under `budget_usd`.
+- Private/loopback URL is rejected.
+- Vercel still has no secrets. Render Secret is the only paid key.
+- `phase-9/` remains the live stack until this done-check, then hosting moves to `phase-10/`.
+
+Cost: paid calls from Render count against `budget_usd`. Ledger resets if Render restarts. Vercel Hobby still $0.
+
+Phase 10 status:
+- [x] 10.1 Folder + planning docs.
+- [x] 10.2–10.8 Code, tests, Render `jobs` + Secret key slot.
+- [x] 10.9 Root CI / `render.yaml` point at `phase-10/`. Set Vercel Root Directory to `phase-10/web` and add the Render `OPENAI_API_KEY` Secret.
 
 ---
 
@@ -633,6 +738,7 @@ Phase 9 status (as built):
 | Phase 4B paid audits (≤ 5) | ~120 each | mini | ~1.00 |
 | Phase 5 judge re-runs (≤ 2) | ≤ 492 | mini | ≤ 0.60 |
 | Phase 8 / 9 hosting (Render free, Vercel Hobby, offline only) | 0 | — | 0.00 |
+| Phase 10 public hosted audits | visitor jobs | nano/mini | under `budget_usd`; ledger resets on Render restart |
 | Debugging headroom | — | — | 0.40 |
 | **Total estimate** | | | **≈ 2.35** |
 | `budget_usd` soft cap | | | 3.00 |
@@ -657,7 +763,8 @@ Rules: check `evalpilot spend` before each paid step; debug single cases with `-
 | API endpoints, CORS, modes, upload caps, never-executes, no-key startup guard | 8 | yes |
 | Frontend screens (mockup structure), API client, snapshot fallback, XSS-as-text, public-vs-admin gating, `next build` + CSP hashes | 9 | yes |
 | API additions for the screens, `serve --admin` guards | 9 | yes |
-| Deployed `/health` and Vercel URL smoke | 8 / 9 | no (manual after deploy) |
+| Public hosted jobs: URL/repo POST, SSRF denylist, jobs+key startup, frontend inputs when `jobs_enabled` | 10 | yes (offline stubs) |
+| Deployed `/health` and Vercel URL smoke | 8 / 9 / 10 | no (manual after deploy) |
 | Paid live smoke / paid audit | 2 / 4B | no (`EVALPILOT_LIVE=1`) |
 
 ---
@@ -679,15 +786,15 @@ Rules: check `evalpilot spend` before each paid step; debug single cases with `-
 | GPT-5.x parameter rejected | request-shape tests + smoke call before bulk runs |
 | `gpt-5.4-nano` deprecation | model names from env; pricing table per model |
 | Spend overrun | budget guard, caches, per-audit AI review caps, spend printed after every run/audit |
-| Hosted API spends money (Render's disk is ephemeral, so a ledger there would reset) | no key on Render; provider forced offline; startup guard + test |
+| Hosted API spends money (Render's disk is ephemeral, so a ledger there would reset) | Phase 8–9: no key. Phase 10: key on Render only, `budget_usd` still enforced; document ledger reset on restart |
 | Render free tier sleeps / cold starts | cheap `/health`; frontend retry + "waking" state; snapshot fallback |
-| Public upload endpoint abused | `readonly` default; `jobs` mode opt-in; size/count caps; per-IP rate limit; one job at a time |
-| SSRF via URL probing from the host | URL targets disabled on the hosted API |
+| Public upload endpoint abused | `readonly` default; `jobs` opt-in on Render; size/count caps; per-IP rate limit; one job at a time |
+| SSRF via URL probing from the host | Phase 8–9: URL targets disabled. Phase 10: HTTPS only; block loopback / private / metadata IPs; `--authorized` required; timeouts |
 | Stored XSS from bot answers in the web app | text-only rendering; CSP; component test with payloads |
 | Frontend/backend schema drift | `lib/types.ts` type-checked against `evalpilot snapshot` in CI |
 | CORS misconfiguration | explicit origin allowlist; test for a rejected origin |
 | Vercel Hobby is for non-commercial use | portfolio/demo use only; note in README |
-| Mockup features need a key or URL probing (live audits, AI review, playground free text, labelling) | admin mode only, on the owner's machine (`serve --admin`, loopback, per-process token, refused when hosted); public UI disables them with a reason |
+| Mockup features need a key or URL probing | Phase 9: admin on the owner's machine. Phase 10: URL + repo audits are public on Render `jobs`; labels and free-text playground stay local-admin |
 | Next.js static export needs inline scripts, which weakens CSP | per-page CSP meta with sha256 hashes; `vercel.json` for frame-ancestors; no `'unsafe-inline'` / `'unsafe-eval'` for scripts |
 | UI drifts from the mockups | mockups committed in `Docs/mockups/`; component tests assert copy and structure; tokens in one `@theme` block |
 
@@ -705,5 +812,6 @@ Rules: check `evalpilot spend` before each paid step; debug single cases with `-
 - [ ] **M7** Phase 7 — HTML report on GitHub Pages, audit Markdown + PDF, final verdict, README DoD table, spend < $5
 - [ ] **M8** Phase 8 — FastAPI backend live on Render (`/health` green, verdict matches CLI, offline-only)
 - [ ] **M9** Phase 9 — Next.js + Tailwind frontend matching `Docs/mockups/`, live on Vercel against the Render API, snapshot fallback, CSP clean, admin mode local-only
+- [x] **M10** Phase 10 — public hosted audits (open v1): URL + GitHub from Vercel, Render `jobs` + key, SSRF blocks, budget guard; no accounts yet
 
-Next: Phase 4A, task 4A.4.1.
+Next: set Vercel Root Directory to `phase-10/web` and add the Render `OPENAI_API_KEY` Secret, then push.

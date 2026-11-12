@@ -12,6 +12,7 @@ Build placement:
 | Intake, four engines, risk engine, register, coverage data, preliminary verdict, Markdown export, example bots | 4B |
 | Calibrating the judges the audit relies on; AI code-review precision on planted flaws | 5 |
 | Final verdict = audit verdict AND release gate; HTML report section; PDF export | 7 |
+| Public hosted audits: Vercel form → Render jobs with URL + public GitHub (open v1, no accounts) | 10 |
 
 ---
 
@@ -23,7 +24,7 @@ Build placement:
 | Code is never executed | Target repos are read as text only: no install, no import, no build, no subprocess on target code. Only fixed scanners (gitleaks, bandit) run, and they read files. |
 | Free tools only | gitleaks (MIT, binary), bandit (Apache-2.0), built-in regex rules. OpenAI is used only for LLM judges and AI code review, always through `LlmClient` (cache + budget guard). |
 | Offline by default | Every engine has a deterministic offline path. CI audits the example bots with no key. |
-| Probe only what you own | Live probing of a URL requires `--authorized`, a probe cap and a rate limit. |
+| Probe only what you own | Live probing of a URL requires `--authorized` (CLI flag or the site permission checkbox), a probe cap and a rate limit. Hosted Phase 10 also blocks loopback, private and cloud-metadata IPs. |
 | Binary checks, scored risks | Individual checks stay pass/fail (same rule as graders). Severity scoring happens only in the risk engine: likelihood × impact. |
 
 ---

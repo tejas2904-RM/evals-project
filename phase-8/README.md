@@ -1,5 +1,8 @@
 # EvalPilot — evals + AI system audit for an LLM FAQ bot (Phase 8: backend API on Render)
 
+This folder is the **keyless, read-only Render API**. Public URL + GitHub audits on the published site are **Phase 10**
+(`../phase-10/`, `../Docs/Implementation-Plan.md`). Do not put `OPENAI_API_KEY` on Render for this phase.
+
 EvalPilot runs a 41-case eval set through three versions of a RAG FAQ bot (v1 naive, v2 guardrails, v3
 entity-aware). It grades every answer with 8 binary graders (6 code graders + 2 LLM judges), calibrates the judges
 against human labels, and gates releases. It also audits any LLM system (behaviour, OWASP LLM Top 10 probes, code

@@ -1,5 +1,9 @@
 # EvalPilot — evals + AI system audit for an LLM FAQ bot (Phase 9: Next.js app on Vercel)
 
+Live: https://evals-project.vercel.app/ — **read-only demo**. Anyone starting a URL or GitHub audit from that site is
+**Phase 10** (`../phase-10/`, `../Docs/Implementation-Plan.md`). This folder stays the live stack until Phase 10's
+done-check, then CI / Render / Vercel Root Directory switch.
+
 EvalPilot runs a 41-case eval set through three versions of a RAG FAQ bot (v1 naive, v2 guardrails, v3
 entity-aware). It grades every answer with 8 binary graders (6 code graders + 2 LLM judges), calibrates the judges
 against human labels, and gates releases. It also audits any LLM system (behaviour, OWASP LLM Top 10 probes, code
@@ -163,7 +167,7 @@ file is stale. Frontend tests: `cd web && npm test` (Vitest). Typecheck: `npm ru
 - [x] XSS rendered as text; `dangerouslySetInnerHTML` banned by a source-scan test
 - [x] CSP: hashed inline scripts in each `out/**/*.html`; `vercel.json` sets frame-ancestors / nosniff
 - [x] `evalpilot serve --admin` refused when hosted and on non-loopback; playground free-text is 403 publicly
-- [ ] Vercel production URL (needs a push + Vercel project). Set Render `EVALPILOT_ALLOWED_ORIGINS` to that URL
+- [x] Vercel production: https://evals-project.vercel.app/. Set Render `EVALPILOT_ALLOWED_ORIGINS` to that URL
       and `http://localhost:3000`.
 
 ## Phase 7 — report, PDF, final verdict

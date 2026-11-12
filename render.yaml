@@ -1,12 +1,12 @@
-# Render Blueprint for the EvalPilot API (free web service), served from phase-9/.
-# Read-only and offline: never set OPENAI_API_KEY here or in the dashboard (the app refuses to start with one).
+# Render Blueprint for the EvalPilot API (free web service), served from phase-10/.
+# Public jobs: URL + GitHub audits. OPENAI_API_KEY is a dashboard Secret (sync: false — never in git).
 # Set EVALPILOT_ALLOWED_ORIGINS to the Vercel URL and http://localhost:3000 (Next.js dev).
 services:
   - type: web
     name: evalpilot-api
     runtime: python
     plan: free
-    rootDir: phase-9
+    rootDir: phase-10
     autoDeploy: true
     buildCommand: pip install ".[api,pdf]"
     startCommand: uvicorn evalpilot.api.app:create_app --factory --host 0.0.0.0 --port $PORT --proxy-headers
@@ -15,7 +15,9 @@ services:
       - key: PYTHON_VERSION
         value: "3.12.8"
       - key: EVALPILOT_API_MODE
-        value: readonly
+        value: jobs
+      - key: OPENAI_API_KEY
+        sync: false
       - key: EVALPILOT_BOT_MODEL
         value: gpt-5.4-nano
       - key: EVALPILOT_JUDGE_MODEL

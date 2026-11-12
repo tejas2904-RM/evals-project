@@ -13,8 +13,9 @@ This document turns the problem statement into a **phased system architecture**.
 | 5 | Human labels, judge calibration, AI-review precision | built (`phase-5/`); owner labels pending |
 | 6 | Run compare and release gate | built (`phase-6/`); CI not yet run on GitHub |
 | 7 | HTML report, audit export (Markdown + PDF), final ship/block verdict, definition of done | built (`phase-7/`); final verdict v3 BLOCK pending owner labels; Pages not yet enabled |
-| 8 | Backend API (FastAPI) deployed on **Render** | built (`phase-8/`); not yet deployed |
-| 9 | Frontend web app (**Next.js + Tailwind**, screens in `Docs/mockups/`) deployed on **Vercel**, talking to the Render API | planned |
+| 8 | Backend API (FastAPI) deployed on **Render** | built (`phase-8/`) |
+| 9 | Frontend web app (**Next.js + Tailwind**, screens in `Docs/mockups/`) deployed on **Vercel**, talking to the Render API | built (`phase-9/`); live at https://evals-project.vercel.app/; public site read-only |
+| 10 | Public hosted audits (open v1): anyone on the Vercel site can start a URL + GitHub audit on Render | built (`phase-10/`); auth / credits / paywalls are later versions |
 
 ---
 
@@ -75,7 +76,7 @@ EvalPilot is a **Python CLI** with two jobs:
 | Client | **One** OpenAI-compatible client; `base_url` switches `openai` / `groq` / `ollama`. |
 | Offline | `--provider offline` works with **no key** for evals *and* audits. Public CI never sees `OPENAI_API_KEY`. |
 | Cache | Disk cache of every LLM response. Unchanged inputs cost $0 on rerun. |
-| Secrets | `OPENAI_API_KEY` from gitignored `.env` only. Secrets found by the audit are redacted in every output. |
+| Secrets | `OPENAI_API_KEY` from gitignored `.env` or (Phase 10) a Render dashboard Secret. Never Vercel, never git, never CI. Secrets found by the audit are redacted in every output. |
 | Tools | Open-source / free only: Python libraries, gitleaks, bandit. Report hosted free on GitHub Pages. |
 | Checks | Binary pass/fail graders and checks; **no 1–5 quality scores**. Only the audit's risk engine scores, as likelihood × impact. |
 | Target code | The audit **never executes** code it scans. |
@@ -373,6 +374,45 @@ accessibility ≥ 90; admin mode works locally and stays impossible on the hoste
 
 ---
 
+## Phase 10 — Public hosted audits (open v1)
+
+**Goal:** the published Vercel site can start real audits. Anyone can paste a bot URL and/or a public GitHub repo.
+Render runs the engines (including paid OpenAI under `budget_usd`). No local admin server. No user accounts in this
+phase — that is v2/v3 (purchase / subscription in front of the same POST).
+
+Copy `phase-9/` → `phase-10/`. After the done-check, CI, Render `rootDir` and Vercel Root Directory point at `phase-10/`.
+
+```text
+Browser ──► Vercel CDN (phase-10/web static export)
+              │
+              ├─ GET  ──► Render API (demo dashboard, snapshot fallback if asleep)
+              └─ POST /api/audits ──► Render jobs (OPENAI_API_KEY as dashboard Secret)
+                                        ├─ HTTPS URL + permission tick (SSRF denylist)
+                                        ├─ public GitHub archive zip
+                                        └─ BudgetGuard · rate limit · one job · ephemeral disk
+```
+
+| Component | Change from Phase 9 |
+|---|---|
+| `api/settings.py` | Hosted `jobs` may start with `OPENAI_API_KEY`. Hosted `readonly` + key still refused. Admin still refused when hosted |
+| `api/jobs.py` | If a key is present, use the live runner (URL, repo, optional AI review). If not, keep the offline hosted runner |
+| `api/app.py` | `target_url` and `repo` no longer admin-only in `jobs` mode |
+| `audit/intake.py` / adapters | Hosted: HTTPS only; block loopback, private, and cloud-metadata IPs |
+| `web/lib/draft.ts` | `jobs` mode allows url + card + code |
+| Home / wizard | Start audit enabled for visitors when `jobs_enabled` |
+| `render.yaml` | `EVALPILOT_API_MODE=jobs`; `OPENAI_API_KEY` set in the dashboard (`sync: false`) |
+
+**What stays local-admin in Phase 10:** writing `data/labels.jsonl`, free-text playground (paid live answers), re-run
+of reference audits. Public visitors only create new audits.
+
+**What v2 / v3 add later (not this phase):** sign-in, credits, Stripe / subscription, private audits, per-user quotas.
+They wrap `POST /api/audits`; they do not replace the engines.
+
+**Exit criteria:** docs + `phase-10/` folder exist; then code: public POST with URL/repo works in jobs mode; private
+IPs 400; CI still keyless; after switch-over, https://evals-project.vercel.app/ can start an audit without Admin sign in.
+
+---
+
 ## Cross-cutting architecture
 
 ### CLI command map
@@ -390,6 +430,7 @@ accessibility ≥ 90; admin mode works locally and stays impossible on the hoste
 | `report`, `audit-report --format pdf`, `verdict` | 7 | writes HTML / PDF / final verdict JSON |
 | `serve` | 8 | runs the API locally (`uvicorn`); same app Render starts |
 | `serve --admin`, `snapshot` | 9 | admin API on 127.0.0.1 with the owner's key and budget guard (refused when hosted) / read-only API dump for the frontend fallback |
+| hosted `POST /api/audits` with URL + repo | 10 | public jobs on Render; key is a Render Secret; SSRF denylist; budget guard |
 
 ### Data flow
 
@@ -424,6 +465,7 @@ Phase 1 Skeleton
                           └─► Phase 7 Report + audit export + final verdict
                                 └─► Phase 8 Backend API (Render)
                                       └─► Phase 9 Frontend (Vercel)
+                                            └─► Phase 10 Public hosted audits (open v1)
 ```
 
 Phases 5 and 6 can overlap once Phase 4 exists. Phase 7 is the last evaluation phase: reports are a **view** over traces, grades, labels, diffs, audits, spend and verdicts — never a second source of truth. Phases 8 and 9 keep that rule: the API serves the same views over HTTP and the frontend only renders them.
@@ -438,8 +480,9 @@ Phases 5 and 6 can overlap once Phase 4 exists. Phase 7 is the last evaluation p
 - Paid providers or paid scanners other than OpenAI.
 - Executing, building or dynamically testing target source code.
 - Probing systems the user isn't authorized to test; load or denial-of-service testing.
-- Paid OpenAI calls from the hosted backend (Render runs offline only; paid runs stay on the owner's machine).
-- User accounts / login (the hosted API is read-only by default; uploads are rate-limited and temporary). The Phase 9
-  "Admin sign in" is a per-process token for the owner's local `evalpilot serve --admin`, not an account system.
+- Paid OpenAI calls from the hosted backend **in Phases 8–9** (those phases stay keyless). Phase 10 allows a Render
+  Secret key for public jobs under `budget_usd`.
+- User accounts / login / purchase / subscription (Phase 10 is open v1: anyone can start an audit). Planned for v2/v3
+  in front of the same `POST /api/audits`. Phase 9 "Admin sign in" remains a local per-process token for labels.
 - Paid hosting tiers (Render free web service and Vercel Hobby only).
 - Real customer data (corpus and example bots are fictional).

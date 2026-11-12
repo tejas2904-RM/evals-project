@@ -1,0 +1,27 @@
+# Render Blueprint for the EvalPilot API (free web service).
+# Public jobs: URL + GitHub audits. OPENAI_API_KEY is a dashboard Secret (sync: false — never in git).
+# EVALPILOT_ALLOWED_ORIGINS: the Vercel production URL, preview regex, and http://localhost:3000.
+services:
+  - type: web
+    name: evalpilot-api
+    runtime: python
+    plan: free
+    autoDeploy: true
+    buildCommand: pip install ".[api,pdf]"
+    startCommand: uvicorn evalpilot.api.app:create_app --factory --host 0.0.0.0 --port $PORT --proxy-headers
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.8"
+      - key: EVALPILOT_API_MODE
+        value: jobs
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: EVALPILOT_BOT_MODEL
+        value: gpt-5.4-nano
+      - key: EVALPILOT_JUDGE_MODEL
+        value: gpt-5.4-mini
+      - key: EVALPILOT_ALLOWED_ORIGINS
+        sync: false
+      - key: EVALPILOT_ALLOWED_ORIGIN_REGEX
+        sync: false
