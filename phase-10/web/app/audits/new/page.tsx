@@ -41,6 +41,7 @@ function Wizard() {
   const [zip, setZip] = useState<File | null>(null);
   const [connection, setConnection] = useState<ConnectionTest | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => setDraft(loadDraft()), []);
 
@@ -67,6 +68,7 @@ function Wizard() {
 
   const submit = async () => {
     setError(null);
+    setSubmitting(true);
     const form = new FormData();
     form.set("name", draft.name || "Audit");
     form.set("engines", engines.join(","));
@@ -86,6 +88,8 @@ function Wizard() {
       router.push(`/audits/new/?step=5&job=${job.job_id}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : String(err));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -141,8 +145,8 @@ function Wizard() {
                   </Button>
                 )}
                 {step === 4 && (
-                  <Button variant="primary" disabled={!canNext || (estimate ? !estimate.fits_budget : false)} onClick={submit}>
-                    Start audit
+                  <Button variant="primary" disabled={!canNext || submitting || (estimate ? !estimate.fits_budget : false)} onClick={submit}>
+                    {submitting ? "Starting…" : "Start audit"}
                   </Button>
                 )}
               </div>
@@ -435,6 +439,7 @@ const STATE_TONE: Record<string, "pass" | "fail" | "warn" | "muted" | "brand"> =
 function RunStep({ jobId }: { jobId: string | null }) {
   const [job, setJob] = useState<Job | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [waiting, setWaiting] = useState(false);
 
   useEffect(() => {
     if (!jobId) return;
@@ -442,8 +447,10 @@ function RunStep({ jobId }: { jobId: string | null }) {
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
       try {
-        const j = await apiGet<Job>(`/api/jobs/${encodeURIComponent(jobId)}`);
+        const j = await apiGet<Job>(`/api/jobs/${encodeURIComponent(jobId)}`, 45_000);
         if (stop) return;
+        setError(null);
+        setWaiting(false);
         setJob(j);
         if (j.status === "done" || j.status === "failed") {
           clearApiCache();
@@ -451,6 +458,12 @@ function RunStep({ jobId }: { jobId: string | null }) {
         }
       } catch (err) {
         if (stop) return;
+        // Render's free instance often cannot answer while an audit is running; keep polling.
+        if (err instanceof ApiError && err.unavailable) {
+          setWaiting(true);
+          timer = setTimeout(poll, 3_000);
+          return;
+        }
         setError(err instanceof ApiError ? err.message : String(err));
         return;
       }
@@ -482,6 +495,9 @@ function RunStep({ jobId }: { jobId: string | null }) {
           );
         })}
       </ul>
+      {waiting && (
+        <p className="text-sm text-muted">The API is busy running the audit. Checking again…</p>
+      )}
       {job?.notes.map((n) => (
         <p key={n} className="text-xs text-muted">
           {n}

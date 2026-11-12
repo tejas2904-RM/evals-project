@@ -6,6 +6,7 @@ export const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL || "http://127.0.0
 export const REPORT_URL = process.env.NEXT_PUBLIC_REPORT_URL || "https://tejas2904-rm.github.io/evals-project/report.html";
 export const REPO_URL = process.env.NEXT_PUBLIC_REPO_URL || "https://github.com/tejas2904-RM/evals-project";
 export const TIMEOUT_MS = 10_000;
+const WAKE_DELAYS_MS = [0, 4_000, 8_000, 16_000];
 
 export type Source = "api" | "snapshot";
 
@@ -71,16 +72,34 @@ export function apiGet<T>(path: string, timeoutMs?: number): Promise<T> {
   return request<T>(path, { method: "GET" }, timeoutMs);
 }
 
-export function apiPost<T>(path: string, body: unknown, timeoutMs = 60_000): Promise<T> {
-  return request<T>(path, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  }, timeoutMs);
+/** Retry when Render is asleep or the free instance is too busy to answer. */
+export async function withWakeRetry<T>(fn: () => Promise<T>): Promise<T> {
+  let last: unknown;
+  for (let i = 0; i < WAKE_DELAYS_MS.length; i++) {
+    const delay = WAKE_DELAYS_MS[i] ?? 0;
+    if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+    try {
+      return await fn();
+    } catch (err) {
+      last = err;
+      if (!(err instanceof ApiError) || !err.unavailable || i === WAKE_DELAYS_MS.length - 1) throw err;
+    }
+  }
+  throw last;
 }
 
-export function apiPostForm<T>(path: string, form: FormData, timeoutMs = 120_000): Promise<T> {
-  return request<T>(path, { method: "POST", body: form }, timeoutMs);
+export function apiPost<T>(path: string, body: unknown, timeoutMs = 90_000): Promise<T> {
+  return withWakeRetry(() =>
+    request<T>(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    }, timeoutMs),
+  );
+}
+
+export function apiPostForm<T>(path: string, form: FormData, timeoutMs = 90_000): Promise<T> {
+  return withWakeRetry(() => request<T>(path, { method: "POST", body: form }, timeoutMs));
 }
 
 const CACHE_MS = 30_000;

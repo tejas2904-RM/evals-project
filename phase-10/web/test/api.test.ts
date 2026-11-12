@@ -1,5 +1,5 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { API_BASE, ApiError, apiGet, getWithFallback } from "@/lib/api";
+import { API_BASE, ApiError, apiGet, apiPostForm, getWithFallback } from "@/lib/api";
 import { setAdminToken } from "@/lib/admin";
 import { RETRY_DELAYS_MS, useApi, useApiStatus } from "@/lib/useApi";
 import { fakeApi, meta } from "./fixtures";
@@ -10,6 +10,29 @@ describe("API client", () => {
     const r = await getWithFallback<{ mode: string }>("/api/meta");
     expect(r.source).toBe("api");
     expect(r.data.mode).toBe("readonly");
+  });
+
+  it("retries form POSTs when the API times out, then succeeds", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let n = 0;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn((_url: string, init: RequestInit) => {
+        n += 1;
+        if (n === 1) {
+          return new Promise((_, reject) => init.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError"))));
+        }
+        return Promise.resolve(new Response(JSON.stringify({ job_id: "j1", status: "queued" }), { headers: { "Content-Type": "application/json" } }));
+      }),
+    );
+    const pending = apiPostForm<{ job_id: string }>("/api/audits", new FormData(), 20);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(20);
+      await vi.advanceTimersByTimeAsync(4_000);
+    });
+    await expect(pending).resolves.toEqual({ job_id: "j1", status: "queued" });
+    expect(n).toBe(2);
+    vi.useRealTimers();
   });
 
   it("turns a timeout into an 'unavailable' error", async () => {
